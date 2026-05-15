@@ -32,25 +32,25 @@ public class ChatServiceImpl implements ChatService {
 
     private static final Logger log = LoggerFactory.getLogger(ChatServiceImpl.class);
 
-    private static final DateTimeFormatter DATE_FORMATTER =
-            DateTimeFormatter.ofPattern("dd MMM yyyy").withZone(ZoneId.of("UTC"));
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd MMM yyyy")
+            .withZone(ZoneId.of("UTC"));
 
-    private final ChatRepository              chatRepository;
-    private final ChatParticipantRepository   participantRepository;
-    private final MessageRepository           messageRepository;
-    private final MessageEditRepository       messageEditRepository;
+    private final ChatRepository chatRepository;
+    private final ChatParticipantRepository participantRepository;
+    private final MessageRepository messageRepository;
+    private final MessageEditRepository messageEditRepository;
     private final MessageVisibilityRepository visibilityRepository;
-    private final MediaAttachmentRepository   mediaRepository;
-    private final GroupRepository             groupRepository;
-    private final GroupMemberRepository       groupMemberRepository;
-    private final GroupEventRepository        groupEventRepository;
-    private final ArchivedChatRepository      archivedChatRepository;
-    private final ChatSearchIndexRepository   searchIndexRepository;
-    private final ChatSettingsRepository      chatSettingsRepository;
-    private final ChatKafkaProducer           kafkaProducer;
-    private final SimpMessagingTemplate       messagingTemplate;
-    private final RedisCacheService           cacheService;
-    private final UserServiceClient           userServiceClient;
+    private final MediaAttachmentRepository mediaRepository;
+    private final GroupRepository groupRepository;
+    private final GroupMemberRepository groupMemberRepository;
+    private final GroupEventRepository groupEventRepository;
+    private final ArchivedChatRepository archivedChatRepository;
+    private final ChatSearchIndexRepository searchIndexRepository;
+    private final ChatSettingsRepository chatSettingsRepository;
+    private final ChatKafkaProducer kafkaProducer;
+    private final SimpMessagingTemplate messagingTemplate;
+    private final RedisCacheService cacheService;
+    private final UserServiceClient userServiceClient;
 
     public ChatServiceImpl(
             ChatRepository chatRepository,
@@ -70,22 +70,22 @@ public class ChatServiceImpl implements ChatService {
             RedisCacheService cacheService,
             UserServiceClient userServiceClient) {
 
-        this.chatRepository        = chatRepository;
+        this.chatRepository = chatRepository;
         this.participantRepository = participantRepository;
-        this.messageRepository     = messageRepository;
+        this.messageRepository = messageRepository;
         this.messageEditRepository = messageEditRepository;
-        this.visibilityRepository  = visibilityRepository;
-        this.mediaRepository       = mediaRepository;
-        this.groupRepository       = groupRepository;
+        this.visibilityRepository = visibilityRepository;
+        this.mediaRepository = mediaRepository;
+        this.groupRepository = groupRepository;
         this.groupMemberRepository = groupMemberRepository;
-        this.groupEventRepository  = groupEventRepository;
+        this.groupEventRepository = groupEventRepository;
         this.archivedChatRepository = archivedChatRepository;
         this.searchIndexRepository = searchIndexRepository;
         this.chatSettingsRepository = chatSettingsRepository;
-        this.kafkaProducer         = kafkaProducer;
-        this.messagingTemplate     = messagingTemplate;
-        this.cacheService          = cacheService;
-        this.userServiceClient     = userServiceClient;
+        this.kafkaProducer = kafkaProducer;
+        this.messagingTemplate = messagingTemplate;
+        this.cacheService = cacheService;
+        this.userServiceClient = userServiceClient;
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -94,7 +94,7 @@ public class ChatServiceImpl implements ChatService {
     @Override
     @Transactional
     public MessageResponse sendPrivateMessage(UUID senderId, String senderUsername,
-                                               SendPrivateMessageRequest request) {
+            SendPrivateMessageRequest request) {
         UUID receiverId = userServiceClient.getUserIdByUsername(request.getReceiverUsername());
         log.info("sendPrivateMessage sender={} receiver={}", senderId, receiverId);
 
@@ -140,12 +140,22 @@ public class ChatServiceImpl implements ChatService {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+    // Get Chats for User by Username
+    // ─────────────────────────────────────────────────────────────────────────
+    @Override
+    public List<ChatSummaryResponse> getChatsForUserByUsername(String username) {
+        log.info("getChatsForUserByUsername username={}", username);
+        UUID userId = userServiceClient.getUserIdByUsername(username);
+        return getChatsForUser(userId);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
     // Send Group Message
     // ─────────────────────────────────────────────────────────────────────────
     @Override
     @Transactional
     public MessageResponse sendGroupMessage(UUID senderId, String senderUsername,
-                                             SendGroupMessageRequest request) {
+            SendGroupMessageRequest request) {
         UUID chatId = UUID.fromString(request.getChatId());
 
         if (!participantRepository.existsByChatIdAndUserId(chatId, senderId)) {
@@ -216,10 +226,12 @@ public class ChatServiceImpl implements ChatService {
     public List<MessageResponse> getChatMessages(UUID chatId, UUID requestingUserId) {
         log.info("getChatMessages chatId={} userId={}", chatId, requestingUserId);
 
-        // Use per-user filtered query — replaces old findByChatIdOrdered + filterDeletedForMe
+        // Use per-user filtered query — replaces old findByChatIdOrdered +
+        // filterDeletedForMe
         List<Message> messages = messageRepository.findByChatIdOrderedForUser(chatId, requestingUserId);
 
-        if (messages.isEmpty()) return Collections.emptyList();
+        if (messages.isEmpty())
+            return Collections.emptyList();
 
         // Batch load all attachments — avoids N+1 DB calls per message
         List<UUID> messageIds = messages.stream().map(Message::getId).collect(Collectors.toList());
@@ -240,7 +252,7 @@ public class ChatServiceImpl implements ChatService {
     @Override
     @Transactional
     public GroupInfo createGroup(UUID creatorId, String creatorUsername,
-                                  CreateGroupRequest request) {
+            CreateGroupRequest request) {
         log.info("createGroup creator={} name={}", creatorId, request.getName());
 
         Chat chat = new Chat();
@@ -411,9 +423,8 @@ public class ChatServiceImpl implements ChatService {
         groupMemberRepository.save(member);
 
         recordGroupEvent(groupId, "ADMIN_CHANGED", adminId, targetUserId, "User promoted to admin");
-        groupRepository.findById(groupId).ifPresent(group ->
-                sendGroupEventMessage(group.getChatId(), groupId, adminId,
-                        "A member was promoted to admin"));
+        groupRepository.findById(groupId).ifPresent(group -> sendGroupEventMessage(group.getChatId(), groupId, adminId,
+                "A member was promoted to admin"));
 
         log.info("User {} promoted to admin in group {} by {}", targetUserId, groupId, adminId);
     }
@@ -476,7 +487,8 @@ public class ChatServiceImpl implements ChatService {
         if (!messageRepository.existsById(messageId)) {
             throw new MessageNotFoundException("Message not found.");
         }
-        if (visibilityRepository.existsByMessageIdAndUserId(messageId, userId)) return;
+        if (visibilityRepository.existsByMessageIdAndUserId(messageId, userId))
+            return;
 
         MessageVisibility vis = new MessageVisibility();
         vis.setMessageId(messageId);
@@ -561,9 +573,9 @@ public class ChatServiceImpl implements ChatService {
     // ─────────────────────────────────────────────────────────────────────────
     @Override
     public List<MessageResponse> searchChatWithFilters(UUID chatId, UUID requestingUserId,
-                                                        String query, UUID senderId,
-                                                        String mediaType,
-                                                        Instant from, Instant to) {
+            String query, UUID senderId,
+            String mediaType,
+            Instant from, Instant to) {
         log.info("searchChatWithFilters chatId={} query={} senderId={} mediaType={}",
                 chatId, query, senderId, mediaType);
 
@@ -586,7 +598,8 @@ public class ChatServiceImpl implements ChatService {
     @Override
     @Transactional
     public void archiveChat(UUID chatId, UUID userId) {
-        if (archivedChatRepository.existsByChatIdAndUserId(chatId, userId)) return;
+        if (archivedChatRepository.existsByChatIdAndUserId(chatId, userId))
+            return;
 
         ArchivedChat arc = new ArchivedChat();
         arc.setChatId(chatId);
@@ -622,7 +635,8 @@ public class ChatServiceImpl implements ChatService {
         List<UUID> archivedChatIds = archivedChatRepository.findByUserId(userId)
                 .stream().map(ArchivedChat::getChatId).collect(Collectors.toList());
 
-        if (archivedChatIds.isEmpty()) return Collections.emptyList();
+        if (archivedChatIds.isEmpty())
+            return Collections.emptyList();
 
         Set<UUID> hiddenIds = visibilityRepository.findHiddenMessageIdsByUserId(userId);
 
@@ -711,7 +725,7 @@ public class ChatServiceImpl implements ChatService {
     @Override
     @Transactional
     public MessageResponse sendContact(UUID senderId, String senderUsername,
-                                        UUID chatId, ContactPayload contact) {
+            UUID chatId, ContactPayload contact) {
         log.info("sendContact sender={} chatId={}", senderId, chatId);
 
         if (!participantRepository.existsByChatIdAndUserId(chatId, senderId)) {
@@ -758,9 +772,10 @@ public class ChatServiceImpl implements ChatService {
     // ─────────────────────────────────────────────────────────────────────────
 
     private UUID findOrCreatePrivateChat(UUID userA, String usernameA,
-                                          UUID userB, String usernameB) {
+            UUID userB, String usernameB) {
         List<UUID> shared = participantRepository.findPrivateChatBetween(userA, userB);
-        if (!shared.isEmpty()) return shared.get(0);
+        if (!shared.isEmpty())
+            return shared.get(0);
 
         Chat chat = new Chat();
         chat.setType(Chat.ChatType.PRIVATE);
@@ -793,7 +808,7 @@ public class ChatServiceImpl implements ChatService {
     }
 
     private void recordGroupEvent(UUID groupId, String eventType, UUID actorId,
-                                   UUID targetId, String description) {
+            UUID targetId, String description) {
         GroupEvent event = new GroupEvent();
         event.setGroupId(groupId);
         event.setEventType(eventType);
@@ -810,7 +825,7 @@ public class ChatServiceImpl implements ChatService {
     }
 
     private Message buildMessage(UUID chatId, UUID senderId, String senderUsername,
-                                  String content, String messageTypeStr, String replyToId) {
+            String content, String messageTypeStr, String replyToId) {
         Message m = new Message();
         m.setChatId(chatId);
         m.setSenderId(senderId);
@@ -825,7 +840,10 @@ public class ChatServiceImpl implements ChatService {
         }
 
         if (replyToId != null) {
-            try { m.setReplyToId(UUID.fromString(replyToId)); } catch (Exception ignored) {}
+            try {
+                m.setReplyToId(UUID.fromString(replyToId));
+            } catch (Exception ignored) {
+            }
         }
         return m;
     }
@@ -847,12 +865,12 @@ public class ChatServiceImpl implements ChatService {
         att.setPreviewDesc(previewDesc);
 
         switch (messageType.toUpperCase()) {
-            case "IMAGE"   -> att.setMediaType(MediaType.IMAGE);
-            case "FILE"    -> att.setMediaType(MediaType.FILE);
+            case "IMAGE" -> att.setMediaType(MediaType.IMAGE);
+            case "FILE" -> att.setMediaType(MediaType.FILE);
             case "CONTACT" -> att.setMediaType(MediaType.CONTACT);
             case "STICKER" -> att.setMediaType(MediaType.STICKER);
-            case "LINK"    -> att.setMediaType(MediaType.LINK);
-            default        -> att.setMediaType(MediaType.FILE);
+            case "LINK" -> att.setMediaType(MediaType.LINK);
+            default -> att.setMediaType(MediaType.FILE);
         }
         return mediaRepository.save(att);
     }
@@ -873,13 +891,15 @@ public class ChatServiceImpl implements ChatService {
             idx.setFileName(attachment.getFileName());
             idx.setUrl(attachment.getUrl());
             idx.setMediaType(attachment.getMediaType() != null
-                    ? attachment.getMediaType().name() : null);
+                    ? attachment.getMediaType().name()
+                    : null);
         }
         searchIndexRepository.save(idx);
     }
 
     private boolean hasAttachment(String messageType) {
-        if (messageType == null) return false;
+        if (messageType == null)
+            return false;
         return switch (messageType.toUpperCase()) {
             case "IMAGE", "FILE", "CONTACT", "STICKER", "LINK" -> true;
             default -> false;
@@ -944,7 +964,8 @@ public class ChatServiceImpl implements ChatService {
         r.setDeletedAt(m.getDeletedAt() != null ? m.getDeletedAt().toString() : null);
         r.setUpdatedAt(m.getUpdatedAt() != null ? m.getUpdatedAt().toString() : null);
         r.setDate(m.getSentAt() != null ? DATE_FORMATTER.format(m.getSentAt()) : null);
-        if (attachment != null) r.setAttachment(toMediaResponse(attachment));
+        if (attachment != null)
+            r.setAttachment(toMediaResponse(attachment));
         return r;
     }
 
@@ -1017,7 +1038,7 @@ public class ChatServiceImpl implements ChatService {
     }
 
     private void sendGroupEventMessage(UUID chatId, UUID groupId,
-                                        UUID actorId, String eventText) {
+            UUID actorId, String eventText) {
         try {
             Message eventMsg = new Message();
             eventMsg.setChatId(chatId);

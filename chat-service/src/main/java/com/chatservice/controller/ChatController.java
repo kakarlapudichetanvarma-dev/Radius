@@ -37,6 +37,16 @@ public class ChatController {
         return ok("Chats fetched successfully.", chats);
     }
 
+    // GET /chats/username/{username} — get all chats for a user by username
+    @GetMapping("/chats/username/{username}")
+    public ResponseEntity<ApiResponse> getChatsByUsername(
+            @PathVariable String username,
+            Authentication auth) {
+        log.info("GET /chats/username/{}", username);
+        List<ChatSummaryResponse> chats = chatService.getChatsForUserByUsername(username);
+        return ok("Chats fetched successfully.", chats);
+    }
+
     // ── GET /chats/{chatId}/messages ─────────────────────────────────────────
     @GetMapping("/chats/{chatId}/messages")
     public ResponseEntity<ApiResponse> getChatMessages(
@@ -245,7 +255,7 @@ public class ChatController {
         log.info("GET /chats/{}/search/advanced query={} sender={} mediaType={}",
                 chatId, query, senderId, mediaType);
         Instant fromInstant = from != null ? Instant.parse(from) : null;
-        Instant toInstant   = to   != null ? Instant.parse(to)   : null;
+        Instant toInstant = to != null ? Instant.parse(to) : null;
         return ok("Search results.",
                 chatService.searchChatWithFilters(chatId, userId, query,
                         senderId, mediaType, fromInstant, toInstant));
