@@ -1,0 +1,101 @@
+version: "3.9"
+
+# =============================================
+# auth-service — Full Docker Compose Stack
+# Services: auth-service | PostgreSQL | Redis
+# =============================================
+
+services:
+
+  # ---- PostgreSQL ----
+  postgres:
+    image: postgres:16-alpine
+    container_name: auth-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       authdb
+      POSTGRES_USER:     authuser
+      POSTGRES_PASSWORD: authpassword
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./src/main/resources/db/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U authuser -d authdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ---- Redis ----
+  redis:
+    image: redis:7-alpine
+    container_name: auth-redis
+    restart: unless-stopped
+    command: redis-server --requirepass redispassword
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "redispassword", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ---- auth-service ----
+  auth-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: auth-service
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      # Database
+      DB_HOST:     postgres
+      DB_PORT:     5432
+      DB_NAME:     authdb
+      DB_USERNAME: authuser
+      DB_PASSWORD: authpassword
+
+      # Redis
+      REDIS_HOST:     redis
+      REDIS_PORT:     6379
+      REDIS_PASSWORD: redispassword
+
+      # SMTP — replace with your credentials
+      SMTP_HOST:     smtp.gmail.com
+      SMTP_PORT:     587
+      SMTP_USERNAME: your-email@gmail.com
+      SMTP_PASSWORD: your-app-password
+      EMAIL_FROM:    noreply@authservice.com
+
+      # JWT — change in production!
+      JWT_SECRET:        404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+      JWT_EXPIRATION_MS: 86400000
+
+      # OTP
+      OTP_EXPIRATION_SECONDS: 300
+
+      # App
+      BASE_URL: http://localhost:8080
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      start_period: 40s
+      retries: 3
+    volumes:
+      - ./logs:/app/logs
+
+volumes:
+  postgres_data:
+  redis_data:

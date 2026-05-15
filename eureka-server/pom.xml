@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+         https://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <!-- ─────────────────────────────────────────────
+         Spring Boot Parent BOM – manages all library
+         versions automatically for compatibility.
+         ───────────────────────────────────────────── -->
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.3.0</version>
+        <relativePath/>
+    </parent>
+
+    <!-- ─────────────────────────────────────────────
+         Project coordinates
+         ───────────────────────────────────────────── -->
+    <groupId>com.chatapp</groupId>
+    <artifactId>discovery-service</artifactId>
+    <version>1.0.0</version>
+    <packaging>jar</packaging>
+
+    <name>discovery-service</name>
+    <description>Eureka Discovery Server for Chat App Microservices</description>
+
+    <!-- ─────────────────────────────────────────────
+         Java 21 + Spring Cloud 2023.x (compatible
+         with Spring Boot 3.3.x)
+         ───────────────────────────────────────────── -->
+    <properties>
+        <java.version>17</java.version>
+        <spring-cloud.version>2023.0.2</spring-cloud.version>
+    </properties>
+
+    <dependencies>
+
+        <!-- Eureka Server – core Netflix service registry -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-netflix-eureka-server</artifactId>
+        </dependency>
+
+        <!-- Spring Boot Actuator – /actuator/health, /actuator/info, etc. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
+        <!-- Spring Web – required for the Eureka dashboard servlet -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <!-- ─── Test scope ─── -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+    </dependencies>
+
+    <!-- ─────────────────────────────────────────────
+         Spring Cloud Bill of Materials (BOM) –
+         guarantees all spring-cloud-* jars use the
+         same compatible patch versions.
+         ───────────────────────────────────────────── -->
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-dependencies</artifactId>
+                <version>${spring-cloud.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <build>
+        <plugins>
+            <!-- Creates an executable fat-jar with all dependencies embedded -->
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>

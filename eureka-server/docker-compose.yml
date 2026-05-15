@@ -1,0 +1,78 @@
+# ══════════════════════════════════════════════════════════════════════
+#  docker-compose.yml – discovery-service
+#
+#  Usage:
+#    docker compose up --build          # Build image + start container
+#    docker compose up -d               # Detached (background) mode
+#    docker compose logs -f             # Stream logs
+#    docker compose down                # Stop & remove containers
+# ══════════════════════════════════════════════════════════════════════
+
+version: "3.9"
+
+services:
+
+  # ── Eureka Discovery Server ─────────────────────────────────────────
+  eureka-server:
+    build:
+      context: .           # Dockerfile is in the same directory
+      dockerfile: Dockerfile
+    container_name: eureka-server
+
+    # Map container port 8761 → host port 8761
+    # Dashboard: http://localhost:8761
+    ports:
+      - "8761:8761"
+
+    # Environment variable overrides for Docker runtime.
+    # These values replace the defaults in application.yml.
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      # Override hostname so Eureka reports the container name
+      # instead of 'localhost' when other containers call it.
+      - EUREKA_INSTANCE_HOSTNAME=discovery-service
+      # Allow up to 512 MB heap inside the container
+      - JAVA_OPTS=-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0
+
+    # Resource limits – prevents the container consuming all host RAM/CPU
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: "0.5"
+        reservations:
+          memory: 256m
+
+    # Mount a named volume so logs survive container restarts
+    volumes:
+      - discovery-logs:/app/logs
+
+    # Docker health check mirrors the HEALTHCHECK in the Dockerfile
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8761/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s   # Give Spring time to start before first check
+
+    # Restart automatically unless explicitly stopped
+    restart: unless-stopped
+
+    # Human-readable labels for tooling / dashboards
+    labels:
+      - "app=chatapp"
+      - "component=discovery"
+      - "version=1.0.0"
+
+# ── Named volumes ────────────────────────────────────────────────────
+volumes:
+  discovery-logs:
+    driver: local
+
+# ── Networks ─────────────────────────────────────────────────────────
+# Shared overlay network so other microservices can join
+# by adding `networks: [chatapp-network]` to their compose file.
+networks:
+  default:
+    name: chatapp-network
+    driver: bridge
