@@ -1,7 +1,6 @@
 package com.chatservice.config;
 
 import com.chatservice.security.JwtUtil;
-import com.chatservice.websocket.ChatWebSocketHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Configuration;
@@ -14,7 +13,6 @@ import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.ChannelInterceptor;
 import org.springframework.messaging.support.MessageHeaderAccessor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.util.StringUtils;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
@@ -36,20 +34,15 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        // ws://host:8084/ws  — native WebSocket
+        // ✅ No SockJS — plain WebSocket
         registry.addEndpoint("/ws")
-                .setAllowedOriginPatterns("*")
-                .withSockJS();   // SockJS fallback for browser clients
+                .setAllowedOriginPatterns("*");
         log.info("WebSocket STOMP endpoint registered at /ws");
     }
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
-        // Client subscribes to  /topic/chat/{chatId}  for incoming messages
-        // Client subscribes to  /user/queue/reply     for private replies
         registry.enableSimpleBroker("/topic", "/queue");
-
-        // Client sends messages to  /app/chat.send  etc.
         registry.setApplicationDestinationPrefixes("/app");
         registry.setUserDestinationPrefix("/user");
     }

@@ -283,6 +283,8 @@ public class FriendServiceImpl implements FriendService {
     // Helpers
     // ─────────────────────────────────────────────────────────────────────────
     private AuthUserResponse getRequesterAuth(UUID userId, String token) {
+    int maxRetries = 3;
+    for (int i = 0; i < maxRetries; i++) {
         try {
             AuthApiResponse apiResponse = authServiceClient.getUserById(userId, token);
             if (apiResponse != null
@@ -290,13 +292,17 @@ public class FriendServiceImpl implements FriendService {
                     && apiResponse.getData() != null) {
                 return apiResponse.getData();
             }
-            log.warning("getRequesterAuth: null/unsuccessful response for userId=" + userId);
         } catch (Exception ex) {
-            log.warning("getRequesterAuth failed for userId=" + userId
-                    + ": " + ex.getMessage());
+            log.warning("getRequesterAuth attempt " + (i+1) + " failed for userId="
+                    + userId + ": " + ex.getMessage());
+            if (i < maxRetries - 1) {
+                try { Thread.sleep(500); } catch (InterruptedException ignored) {}
+            }
         }
-        return null;
     }
+    log.warning("getRequesterAuth: all retries failed for userId=" + userId);
+    return null;
+}
 
     private FriendRequestResponse toRequestResponse(
             FriendRequest fr, AuthUserResponse authUser) {

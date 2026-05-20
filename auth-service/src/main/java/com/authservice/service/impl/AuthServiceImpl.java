@@ -54,7 +54,40 @@ public class AuthServiceImpl implements AuthService {
         this.phoneValidator = phoneValidator;
     }
 
+@Override
+public ApiResponse forgotPassword(ForgotPasswordRequest request) {
+    log.info("Forgot password request for email: {}", request.getEmail());
 
+    User user = userRepository.findByEmail(request.getEmail().toLowerCase())
+            .orElseThrow(() -> new UserNotFoundException("No account found with this email."));
+
+    String otp = otpService.generateAndStoreOtp(user.getEmail());
+
+    emailService.sendOtpEmail(
+            user.getEmail(),
+            user.getUsername(),
+            otp
+    );
+
+    return new ApiResponse(true, "Password reset OTP sent to your email.", null);
+}
+
+@Override
+@Transactional
+public ApiResponse resetPassword(ResetPasswordRequest request) {
+    log.info("Reset password attempt for email: {}", request.getEmail());
+
+    User user = userRepository.findByEmail(request.getEmail().toLowerCase())
+            .orElseThrow(() -> new UserNotFoundException("User not found."));
+
+    // Reuses your existing OTP validation logic
+    otpService.validateOtp(user.getEmail(), request.getOtp());
+
+    user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+    userRepository.save(user);
+
+    return new ApiResponse(true, "Password reset successfully. Please login.", null);
+}
     @Override
     @Transactional
     public UserResponse register(RegisterRequest request) {
@@ -350,27 +383,19 @@ public class AuthServiceImpl implements AuthService {
 
 
     private UserResponse toUserResponse(User user) {
+    // ✅ Send URL instead of raw base64
+    String profilePicUrl = user.getProfilePicture() != null
+            ? "/api/v1/auth/users/" + user.getId() + "/profile-picture"
+            : null;
 
-        String profilePicBase64 = null;
-
-        if (user.getProfilePicture() != null) {
-            profilePicBase64 =
-                    Base64.getEncoder()
-                            .encodeToString(
-                                    user.getProfilePicture()
-                            );
-        }
-
-        return new UserResponse(
-                user.getId().toString(),
-                user.getUsername(),
-                user.getEmail(),
-                user.getPhoneNumber(),
-                profilePicBase64,
-                user.isActive(),
-                user.getCreatedAt() != null
-                        ? user.getCreatedAt().toString()
-                        : null
-        );
-    }
+    return new UserResponse(
+            user.getId().toString(),
+            user.getUsername(),
+            user.getEmail(),
+            user.getPhoneNumber(),
+            profilePicUrl,  // ✅ URL not base64
+            user.isActive(),
+            user.getCreatedAt() != null ? user.getCreatedAt().toString() : null
+    );
+}
 }

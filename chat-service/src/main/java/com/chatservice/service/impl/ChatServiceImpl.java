@@ -91,54 +91,179 @@ public class ChatServiceImpl implements ChatService {
     // ─────────────────────────────────────────────────────────────────────────
     // Send Private Message
     // ─────────────────────────────────────────────────────────────────────────
-    @Override
-    @Transactional
-    public MessageResponse sendPrivateMessage(UUID senderId, String senderUsername,
-            SendPrivateMessageRequest request) {
-        UUID receiverId = userServiceClient.getUserIdByUsername(request.getReceiverUsername());
-        log.info("sendPrivateMessage sender={} receiver={}", senderId, receiverId);
+@Override
+@Transactional
+public MessageResponse sendPrivateMessage(
+        UUID senderId,
+        String senderUsername,
+        SendPrivateMessageRequest request
+) {
 
-        UUID chatId = findOrCreatePrivateChat(senderId, senderUsername,
-                receiverId, request.getReceiverUsername());
+    UUID receiverId =
+            userServiceClient.getUserIdByUsername(
+                    request.getReceiverUsername()
+            );
 
-        // Handle contact sharing via request.getContact()
-        if ("CONTACT".equalsIgnoreCase(request.getMessageType())
-                && request.getContact() != null) {
-            return sendContact(senderId, senderUsername, chatId, request.getContact());
-        }
+    log.info(
+            "sendPrivateMessage sender={} receiver={}",
+            senderId,
+            receiverId
+    );
 
-        Message message = buildMessage(chatId, senderId, senderUsername,
-                request.getContent(), request.getMessageType(), request.getReplyToId());
+    UUID chatId =
+            findOrCreatePrivateChat(
+                    senderId,
+                    senderUsername,
+                    receiverId,
+                    request.getReceiverUsername()
+            );
 
-        // Handle sticker
-        if ("STICKER".equalsIgnoreCase(request.getMessageType())
-                && request.getStickerUrl() != null) {
-            message.setContent(request.getStickerUrl());
-        }
+    // CONTACT
+    if (
+            "CONTACT".equalsIgnoreCase(
+                    request.getMessageType()
+            ) &&
+            request.getContact() != null
+    ) {
 
-        message = messageRepository.save(message);
-
-        MediaAttachment attachment = null;
-        if (hasAttachment(request.getMessageType())) {
-            attachment = saveAttachment(message.getId(), chatId, request.getMessageType(),
-                    request.getFileData(), request.getFileName(), request.getFileType(),
-                    request.getFileSizeBytes(), request.getUrl(),
-                    request.getPreviewTitle(), request.getPreviewDesc(),
-                    request.getStickerId());
-        }
-
-        indexMessage(message, attachment);
-        cacheService.evictChatMessages(chatId.toString());
-        kafkaProducer.publishMessageSent(chatId.toString(), message.getId().toString(),
-                senderId.toString());
-
-        MessageResponse response = toMessageResponse(message, attachment);
-        messagingTemplate.convertAndSend("/topic/chat/" + chatId, buildWsMessage(response));
-
-        log.info("Private message {} sent in chat {}", message.getId(), chatId);
-        return response;
+        return sendContact(
+                senderId,
+                senderUsername,
+                chatId,
+                request.getContact()
+        );
     }
 
+    Message message =
+            buildMessage(
+                    chatId,
+                    senderId,
+                    senderUsername,
+                    request.getContent(),
+                    request.getMessageType(),
+                    request.getReplyToId()
+            );
+
+    // STICKER
+    if (
+            "STICKER".equalsIgnoreCase(
+                    request.getMessageType()
+            ) &&
+            request.getStickerUrl() != null
+    ) {
+
+        message.setContent(
+                request.getStickerUrl()
+        );
+    }
+
+    message =
+            messageRepository.save(
+                    message
+            );
+
+    MediaAttachment attachment = null;
+
+    if (
+            hasAttachment(
+                    request.getMessageType()
+            )
+    ) {
+
+        attachment =
+                saveAttachment(
+                        message.getId(),
+                        chatId,
+                        request.getMessageType(),
+                        request.getFileData(),
+                        request.getFileName(),
+                        request.getFileType(),
+                        request.getFileSizeBytes(),
+                        request.getUrl(),
+                        request.getPreviewTitle(),
+                        request.getPreviewDesc(),
+                        request.getStickerId()
+                );
+    }
+
+    indexMessage(
+            message,
+            attachment
+    );
+
+    cacheService.evictChatMessages(
+            chatId.toString()
+    );
+
+    kafkaProducer.publishMessageSent(
+            chatId.toString(),
+            message.getId().toString(),
+            senderId.toString()
+    );
+
+    // ✅ FORCE DELIVERED INSTANTLY
+    message.setStatus(
+            MessageStatus.DELIVERED
+    );
+
+    message.setDeliveredAt(
+            Instant.now()
+    );
+
+    message =
+            messageRepository.save(
+                    message
+            );
+
+    MessageResponse response =
+            toMessageResponse(
+                    message,
+                    attachment
+            );
+
+    // ✅ SEND REALTIME MESSAGE
+    messagingTemplate.convertAndSend(
+            "/topic/chat/" + chatId,
+            buildWsMessage(response)
+    );
+
+    // ✅ SEND REALTIME TICK UPDATE
+    Map<String, Object> ws =
+            new HashMap<>();
+
+    ws.put(
+            "type",
+            "STATUS_UPDATE"
+    );
+
+    ws.put(
+            "messageId",
+            message.getId().toString()
+    );
+
+    ws.put(
+            "status",
+            "DELIVERED"
+    );
+
+    ws.put(
+            "chatId",
+            chatId.toString()
+    );
+
+    messagingTemplate.convertAndSend(
+            "/topic/chat/" + chatId,
+            ws
+    );
+
+    log.info(
+            "Private realtime message {} sent in chat {}",
+            message.getId(),
+            chatId
+    );
+
+    return response;
+}
     // ─────────────────────────────────────────────────────────────────────────
     // Get Chats for User by Username
     // ─────────────────────────────────────────────────────────────────────────
@@ -152,55 +277,185 @@ public class ChatServiceImpl implements ChatService {
     // ─────────────────────────────────────────────────────────────────────────
     // Send Group Message
     // ─────────────────────────────────────────────────────────────────────────
-    @Override
-    @Transactional
-    public MessageResponse sendGroupMessage(UUID senderId, String senderUsername,
-            SendGroupMessageRequest request) {
-        UUID chatId = UUID.fromString(request.getChatId());
+@Override
+@Transactional
+public MessageResponse sendGroupMessage(
+        UUID senderId,
+        String senderUsername,
+        SendGroupMessageRequest request
+) {
 
-        if (!participantRepository.existsByChatIdAndUserId(chatId, senderId)) {
-            throw new NotChatMemberException("You are not a member of this group.");
-        }
+    UUID chatId =
+            UUID.fromString(
+                    request.getChatId()
+            );
 
-        log.info("sendGroupMessage sender={} chatId={}", senderId, chatId);
+    if (
+            !participantRepository
+                    .existsByChatIdAndUserId(
+                            chatId,
+                            senderId
+                    )
+    ) {
 
-        // Handle contact sharing
-        if ("CONTACT".equalsIgnoreCase(request.getMessageType())
-                && request.getContact() != null) {
-            return sendContact(senderId, senderUsername, chatId, request.getContact());
-        }
-
-        Message message = buildMessage(chatId, senderId, senderUsername,
-                request.getContent(), request.getMessageType(), request.getReplyToId());
-
-        // Handle sticker
-        if ("STICKER".equalsIgnoreCase(request.getMessageType())
-                && request.getStickerUrl() != null) {
-            message.setContent(request.getStickerUrl());
-        }
-
-        message = messageRepository.save(message);
-
-        MediaAttachment attachment = null;
-        if (hasAttachment(request.getMessageType())) {
-            attachment = saveAttachment(message.getId(), chatId, request.getMessageType(),
-                    request.getFileData(), request.getFileName(), request.getFileType(),
-                    request.getFileSizeBytes(), request.getUrl(),
-                    request.getPreviewTitle(), request.getPreviewDesc(),
-                    request.getStickerId());
-        }
-
-        indexMessage(message, attachment);
-        cacheService.evictChatMessages(chatId.toString());
-        kafkaProducer.publishMessageSent(chatId.toString(), message.getId().toString(),
-                senderId.toString());
-
-        MessageResponse response = toMessageResponse(message, attachment);
-        messagingTemplate.convertAndSend("/topic/chat/" + chatId, buildWsMessage(response));
-
-        log.info("Group message {} sent in chat {}", message.getId(), chatId);
-        return response;
+        throw new NotChatMemberException(
+                "You are not a member of this group."
+        );
     }
+
+    log.info(
+            "sendGroupMessage sender={} chatId={}",
+            senderId,
+            chatId
+    );
+
+    // CONTACT
+    if (
+            "CONTACT".equalsIgnoreCase(
+                    request.getMessageType()
+            ) &&
+            request.getContact() != null
+    ) {
+
+        return sendContact(
+                senderId,
+                senderUsername,
+                chatId,
+                request.getContact()
+        );
+    }
+
+    Message message =
+            buildMessage(
+                    chatId,
+                    senderId,
+                    senderUsername,
+                    request.getContent(),
+                    request.getMessageType(),
+                    request.getReplyToId()
+            );
+
+    // STICKER
+    if (
+            "STICKER".equalsIgnoreCase(
+                    request.getMessageType()
+            ) &&
+            request.getStickerUrl() != null
+    ) {
+
+        message.setContent(
+                request.getStickerUrl()
+        );
+    }
+
+    message =
+            messageRepository.save(
+                    message
+            );
+
+    MediaAttachment attachment = null;
+
+    if (
+            hasAttachment(
+                    request.getMessageType()
+            )
+    ) {
+
+        attachment =
+                saveAttachment(
+                        message.getId(),
+                        chatId,
+                        request.getMessageType(),
+                        request.getFileData(),
+                        request.getFileName(),
+                        request.getFileType(),
+                        request.getFileSizeBytes(),
+                        request.getUrl(),
+                        request.getPreviewTitle(),
+                        request.getPreviewDesc(),
+                        request.getStickerId()
+                );
+    }
+
+    indexMessage(
+            message,
+            attachment
+    );
+
+    cacheService.evictChatMessages(
+            chatId.toString()
+    );
+
+    kafkaProducer.publishMessageSent(
+            chatId.toString(),
+            message.getId().toString(),
+            senderId.toString()
+    );
+
+    // ✅ FORCE DELIVERED
+    message.setStatus(
+            MessageStatus.DELIVERED
+    );
+
+    message.setDeliveredAt(
+            Instant.now()
+    );
+
+    message =
+            messageRepository.save(
+                    message
+            );
+
+    MessageResponse response =
+            toMessageResponse(
+                    message,
+                    attachment
+            );
+
+    // ✅ SEND REALTIME MESSAGE
+    messagingTemplate.convertAndSend(
+            "/topic/chat/" + chatId,
+            buildWsMessage(response)
+    );
+
+    // ✅ SEND REALTIME STATUS UPDATE
+    Map<String, Object> ws =
+            new HashMap<>();
+
+    ws.put(
+            "type",
+            "STATUS_UPDATE"
+    );
+
+    ws.put(
+            "messageId",
+            message.getId().toString()
+    );
+
+    ws.put(
+            "status",
+            "DELIVERED"
+    );
+
+    ws.put(
+            "chatId",
+            chatId.toString()
+    );
+
+    messagingTemplate.convertAndSend(
+            "/topic/chat/" + chatId,
+            ws
+    );
+
+    log.info(
+            "Group realtime message {} sent in chat {}",
+            message.getId(),
+            chatId
+    );
+
+    return response;
+}
+
 
     // ─────────────────────────────────────────────────────────────────────────
     // Get Chats for User
@@ -659,11 +914,34 @@ public class ChatServiceImpl implements ChatService {
         List<Message> unread = messageRepository.findUnreadMessages(chatId, MessageStatus.SENT, userId);
         Instant now = Instant.now();
         for (Message m : unread) {
-            m.setStatus(MessageStatus.DELIVERED);
-            m.setDeliveredAt(now);
-            messageRepository.save(m);
-            kafkaProducer.publishMessageDelivered(chatId.toString(), m.getId().toString());
-        }
+
+    m.setStatus(MessageStatus.DELIVERED);
+
+    m.setDeliveredAt(now);
+
+    messageRepository.save(m);
+
+    // ✅ REALTIME WS STATUS UPDATE
+    Map<String, Object> ws = new HashMap<>();
+
+    ws.put("type", "STATUS_UPDATE");
+
+    ws.put("messageId", m.getId().toString());
+
+    ws.put("status", "DELIVERED");
+
+    ws.put("chatId", chatId.toString());
+
+    messagingTemplate.convertAndSend(
+        "/topic/chat/" + chatId,
+        ws
+    );
+
+    kafkaProducer.publishMessageDelivered(
+        chatId.toString(),
+        m.getId().toString()
+    );
+}
         log.info("Marked {} messages DELIVERED in chat {} for user {}", unread.size(), chatId, userId);
     }
 
@@ -672,12 +950,36 @@ public class ChatServiceImpl implements ChatService {
     public void markRead(UUID chatId, UUID userId) {
         List<Message> messages = messageRepository.findUnreadMessages(chatId, MessageStatus.DELIVERED, userId);
         Instant now = Instant.now();
-        for (Message m : messages) {
-            m.setStatus(MessageStatus.READ);
-            m.setReadAt(now);
-            messageRepository.save(m);
-            kafkaProducer.publishMessageRead(chatId.toString(), m.getId().toString(), userId.toString());
-        }
+       for (Message m : messages) {
+
+    m.setStatus(MessageStatus.READ);
+
+    m.setReadAt(now);
+
+    messageRepository.save(m);
+
+    // ✅ REALTIME WS STATUS UPDATE
+    Map<String, Object> ws = new HashMap<>();
+
+    ws.put("type", "STATUS_UPDATE");
+
+    ws.put("messageId", m.getId().toString());
+
+    ws.put("status", "READ");
+
+    ws.put("chatId", chatId.toString());
+
+    messagingTemplate.convertAndSend(
+        "/topic/chat/" + chatId,
+        ws
+    );
+
+    kafkaProducer.publishMessageRead(
+        chatId.toString(),
+        m.getId().toString(),
+        userId.toString()
+    );
+}
         cacheService.evictChatMessages(chatId.toString());
         log.info("Marked {} messages READ in chat {} for user {}", messages.size(), chatId, userId);
     }

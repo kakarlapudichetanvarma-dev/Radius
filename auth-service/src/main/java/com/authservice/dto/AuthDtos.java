@@ -80,7 +80,46 @@ public class AuthDtos {
     // =============================================
     // LoginRequest
     // =============================================
+// =============================================
+// Forgot Password Request
+// =============================================
+public static class ForgotPasswordRequest {
 
+    @NotBlank
+    @Email
+    private String email;
+
+    public ForgotPasswordRequest() {}
+
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+}
+
+// =============================================
+// Reset Password Request
+// =============================================
+public static class ResetPasswordRequest {
+
+    @NotBlank
+    @Email
+    private String email;
+
+    @NotBlank
+    private String otp;
+
+    @NotBlank
+    @Size(min = 8)
+    private String newPassword;
+
+    public ResetPasswordRequest() {}
+
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+    public String getOtp() { return otp; }
+    public void setOtp(String otp) { this.otp = otp; }
+    public String getNewPassword() { return newPassword; }
+    public void setNewPassword(String newPassword) { this.newPassword = newPassword; }
+}
     public static class LoginRequest {
 
         @NotBlank

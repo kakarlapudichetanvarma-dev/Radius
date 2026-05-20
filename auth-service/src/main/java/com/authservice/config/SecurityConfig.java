@@ -43,6 +43,9 @@ public class SecurityConfig {
             "/api/v1/auth/register",
             "/api/v1/auth/login",
             "/api/v1/auth/verify-otp",
+            "/api/v1/auth/forgot-password", // ✅ add this
+            "/api/v1/auth/reset-password",
+            "/api/v1/auth/users/*/profile-picture",
             "/actuator/health"
     };
 
@@ -50,22 +53,16 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
-                .sessionManagement(s ->
-                        s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
-                        .anyRequest().authenticated()
-                )
-                // GatewayWhitelistFilter runs first — blocks everything
-                // not coming through the API Gateway, no exceptions
+                        .anyRequest().authenticated())
                 .addFilterBefore(
                         gatewayWhitelistFilter,
-                        UsernamePasswordAuthenticationFilter.class
-                )
+                        UsernamePasswordAuthenticationFilter.class)
                 .addFilterAfter(
                         jwtAuthenticationFilter,
-                        GatewayWhitelistFilter.class
-                );
+                        GatewayWhitelistFilter.class);
 
         return http.build();
     }
@@ -81,17 +78,6 @@ public class SecurityConfig {
         return config.getAuthenticationManager();
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // GatewayWhitelistFilter
-    //
-    // Blocks ALL requests that did not come through the API Gateway.
-    // No exceptions — every request must have the X-Gateway-Source header.
-    //
-    //   localhost:8083/api/v1/auth/login         → 403 blocked
-    //   localhost:8083/api/v1/auth/users/{id}    → 403 blocked
-    //   localhost:8080/api/v1/auth/login         → 200 works via gateway
-    //   localhost:8080/api/v1/auth/users/{id}    → 200 works via gateway
-    // ─────────────────────────────────────────────────────────────────────
     @Component
     public static class GatewayWhitelistFilter extends OncePerRequestFilter {
 
@@ -107,7 +93,12 @@ public class SecurityConfig {
                 FilterChain chain)
                 throws ServletException, IOException {
 
-            // Only health check bypasses the gateway requirement
+            // Allow CORS preflight through without gateway check
+            if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+                chain.doFilter(request, response);
+                return;
+            }
+
             if (request.getRequestURI().equals("/actuator/health")) {
                 chain.doFilter(request, response);
                 return;
@@ -120,8 +111,7 @@ public class SecurityConfig {
                 response.setContentType("application/json");
                 response.getWriter().write(
                         "{\"success\":false," +
-                        "\"message\":\"Direct access not allowed. Use the API Gateway.\"}"
-                );
+                                "\"message\":\"Direct access not allowed. Use the API Gateway.\"}");
                 return;
             }
 

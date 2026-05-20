@@ -1,6 +1,7 @@
 package com.authservice.controller;
 
 import com.authservice.dto.AuthDtos.*;
+import com.authservice.exception.AuthExceptions.UserNotFoundException;
 import com.authservice.service.AuthService;
 
 import jakarta.validation.Valid;
@@ -14,6 +15,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import com.authservice.entity.User;
+import com.authservice.repository.UserRepository;
 
 import java.io.IOException;
 import java.util.UUID;
@@ -21,15 +24,19 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/v1/auth")
 public class AuthController {
-
+private final UserRepository userRepository;
     private static final Logger log =
             LoggerFactory.getLogger(AuthController.class);
 
     private final AuthService authService;
 
-    public AuthController(AuthService authService) {
-        this.authService = authService;
-    }
+    public AuthController(
+        AuthService authService,
+        UserRepository userRepository
+) {
+    this.authService = authService;
+    this.userRepository = userRepository;
+}
 
 
     @PostMapping("/register")
@@ -72,7 +79,21 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
+@PostMapping("/forgot-password")
+public ResponseEntity<ApiResponse> forgotPassword(
+        @Valid @RequestBody ForgotPasswordRequest request) {
+    log.info("Forgot password request for email: {}", request.getEmail());
+    ApiResponse response = authService.forgotPassword(request);
+    return ResponseEntity.ok(response);
+}
 
+@PostMapping("/reset-password")
+public ResponseEntity<ApiResponse> resetPassword(
+        @Valid @RequestBody ResetPasswordRequest request) {
+    log.info("Reset password request for email: {}", request.getEmail());
+    ApiResponse response = authService.resetPassword(request);
+    return ResponseEntity.ok(response);
+}
     @PostMapping("/verify-otp")
     public ResponseEntity<ApiResponse> verifyOtp(
             @Valid @RequestBody OtpVerifyRequest request) {
@@ -121,7 +142,26 @@ public class AuthController {
                 );
 
         return ResponseEntity.ok(response);
+}
+    
+@GetMapping("/users/{userId}/profile-picture")
+public ResponseEntity<byte[]> getProfilePicture(
+        @PathVariable UUID userId) {
+
+    User user = userRepository.findById(userId)
+            .orElseThrow(() ->
+                    new UserNotFoundException("User not found."));
+
+    if (user.getProfilePicture() == null) {
+        return ResponseEntity.notFound().build();
     }
+
+    return ResponseEntity.ok()
+            .header("Content-Type", "image/jpeg")
+            .header("Cache-Control", "max-age=86400")
+            .body(user.getProfilePicture());
+}
+    
     @GetMapping("/users/phone/{phoneNumber}")
     public ResponseEntity<ApiResponse> getByPhone(
             @PathVariable String phoneNumber) {

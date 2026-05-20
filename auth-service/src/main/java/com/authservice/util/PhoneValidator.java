@@ -9,50 +9,34 @@ import org.springframework.stereotype.Component;
 @Component
 public class PhoneValidator {
 
-    private static final PhoneNumberUtil UTIL =
-            PhoneNumberUtil.getInstance();
+        private static final PhoneNumberUtil UTIL = PhoneNumberUtil.getInstance();
 
-    public boolean isValid(
-            String phoneNumber) {
+        public boolean isValid(String phoneNumber) {
+                try {
+                        // Auto-add + if missing so numbers like 919985475365 work
+                        String normalized = phoneNumber.startsWith("+")
+                                        ? phoneNumber
+                                        : "+" + phoneNumber;
 
-        try {
+                        Phonenumber.PhoneNumber parsed = UTIL.parse(normalized, null);
+                        return UTIL.isValidNumber(parsed);
 
-            Phonenumber.PhoneNumber parsed =
-                    UTIL.parse(
-                            phoneNumber,
-                            null
-                    );
-
-            return UTIL.isValidNumber(
-                    parsed
-            );
-
-        } catch (NumberParseException e) {
-
-            return false;
+                } catch (NumberParseException e) {
+                        return false;
+                }
         }
-    }
 
+        public String toE164(String phoneNumber) {
+                try {
+                        String normalized = phoneNumber.startsWith("+")
+                                        ? phoneNumber
+                                        : "+" + phoneNumber;
 
-    public String toE164(
-            String phoneNumber) {
+                        Phonenumber.PhoneNumber parsed = UTIL.parse(normalized, null);
+                        return UTIL.format(parsed, PhoneNumberUtil.PhoneNumberFormat.E164);
 
-        try {
-
-            Phonenumber.PhoneNumber parsed =
-                    UTIL.parse(
-                            phoneNumber,
-                            null
-                    );
-
-            return UTIL.format(
-                    parsed,
-                    PhoneNumberUtil.PhoneNumberFormat.E164
-            );
-
-        } catch (Exception e) {
-
-            return phoneNumber;
+                } catch (Exception e) {
+                        return phoneNumber;
+                }
         }
-    }
 }

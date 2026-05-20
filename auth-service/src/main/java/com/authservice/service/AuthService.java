@@ -22,7 +22,9 @@ public interface AuthService {
      * Verify the OTP for the given email, then generate and return a JWT token.
      */
     AuthTokenResponse verifyOtp(OtpVerifyRequest request);
-
+// Add these two to the interface
+ApiResponse forgotPassword(ForgotPasswordRequest request);
+ApiResponse resetPassword(ResetPasswordRequest request);
     /**
      * Update the authenticated user's username and/or profile picture.
      * Optionally update the password.

@@ -83,6 +83,27 @@ public class GatewayConfig {
                                 .addRequestHeader("X-Gateway-Source", gatewaySecret)
                         )
                         .uri(chatServiceUrl))
+                        // ── CHAT SERVICE (protected — JWT required) ────────────────────
+.route("chat-service", r -> r
+        .path("/api/v1/chat/**")
+        .filters(f -> f
+                .filter(jwtAuthFilter.apply(
+                        new JwtAuthenticationFilter.Config()
+                ))
+                .requestRateLimiter(config -> config
+                        .setRateLimiter(redisRateLimiter())
+                        .setKeyResolver(userKeyResolver()))
+                .addRequestHeader("X-Gateway-Source", gatewaySecret)
+        )
+        .uri(chatServiceUrl))
+
+// ── CHAT SERVICE WebSocket ─────────────────────────────────────  ✅ add this
+.route("chat-service-ws", r -> r
+        .path("/ws/**")
+        .filters(f -> f
+                .addRequestHeader("X-Gateway-Source", gatewaySecret)
+        )
+        .uri(chatServiceUrl))
 
                 // ── NOTIFICATION SERVICE (protected — JWT required) ────────────
                 .route("notification-service", r -> r
