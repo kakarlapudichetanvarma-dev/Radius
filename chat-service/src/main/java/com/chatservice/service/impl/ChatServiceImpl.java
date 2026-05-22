@@ -222,10 +222,20 @@ public MessageResponse sendPrivateMessage(
             );
 
     // ✅ SEND REALTIME MESSAGE
-    messagingTemplate.convertAndSend(
-            "/topic/chat/" + chatId,
-            buildWsMessage(response)
-    );
+   WsMessage wsMessage = buildWsMessage(response);
+
+// ✅ Current open chat realtime
+messagingTemplate.convertAndSend(
+        "/topic/chat/" + chatId,
+        wsMessage
+);
+
+// ✅ Receiver personal inbox realtime
+messagingTemplate.convertAndSendToUser(
+        receiverId.toString(),
+        "/queue/messages",
+        wsMessage
+);
 
     // ✅ SEND REALTIME TICK UPDATE
     Map<String, Object> ws =
@@ -251,10 +261,11 @@ public MessageResponse sendPrivateMessage(
             chatId.toString()
     );
 
-    messagingTemplate.convertAndSend(
-            "/topic/chat/" + chatId,
-            ws
-    );
+   messagingTemplate.convertAndSendToUser(
+        receiverId.toString(),
+        "/queue/messages",
+        ws
+);
 
     log.info(
             "Private realtime message {} sent in chat {}",
