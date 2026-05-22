@@ -63,3 +63,15 @@
 2026-05-22 14:23:15.832 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
 2026-05-22 14:33:15.833 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
 2026-05-22 14:43:15.834 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
+2026-05-22 14:53:15.835 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
+2026-05-22 15:03:15.837 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
+2026-05-22 15:13:15.839 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
+2026-05-22 15:23:15.847 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
+2026-05-22 15:33:15.854 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
+2026-05-22 15:43:15.856 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
+2026-05-22 15:53:15.859 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
+2026-05-22 16:03:15.862 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
+2026-05-22 16:13:15.863 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
+2026-05-22 16:23:15.865 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
+2026-05-22 16:33:15.866 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
+2026-05-22 16:43:15.870 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry

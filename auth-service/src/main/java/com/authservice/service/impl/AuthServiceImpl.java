@@ -1,6 +1,7 @@
 package com.authservice.service.impl;
 
 import com.authservice.dto.AuthDtos.*;
+import com.authservice.dto.AvatarUpdateMessage;
 import com.authservice.entity.User;
 import com.authservice.exception.AuthExceptions.*;
 import com.authservice.repository.UserRepository;
@@ -12,13 +13,12 @@ import com.authservice.util.PhoneValidator;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import java.util.Base64;
 import java.util.UUID;
 
 @Service
@@ -32,9 +32,8 @@ public class AuthServiceImpl implements AuthService {
     private final EmailService emailService;
     private final OtpService otpService;
     private final JwtUtil jwtUtil;
-
-    // ADDED
     private final PhoneValidator phoneValidator;
+    private final SimpMessagingTemplate messagingTemplate;
 
     public AuthServiceImpl(
             UserRepository userRepository,
@@ -42,207 +41,26 @@ public class AuthServiceImpl implements AuthService {
             EmailService emailService,
             OtpService otpService,
             JwtUtil jwtUtil,
-            PhoneValidator phoneValidator) {
+            PhoneValidator phoneValidator,
+            SimpMessagingTemplate messagingTemplate) {
 
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.emailService = emailService;
         this.otpService = otpService;
         this.jwtUtil = jwtUtil;
-
-        // ADDED
         this.phoneValidator = phoneValidator;
-    }
-
-@Override
-public ApiResponse forgotPassword(ForgotPasswordRequest request) {
-    log.info("Forgot password request for email: {}", request.getEmail());
-
-    User user = userRepository.findByEmail(request.getEmail().toLowerCase())
-            .orElseThrow(() -> new UserNotFoundException("No account found with this email."));
-
-    String otp = otpService.generateAndStoreOtp(user.getEmail());
-
-    emailService.sendOtpEmail(
-            user.getEmail(),
-            user.getUsername(),
-            otp
-    );
-
-    return new ApiResponse(true, "Password reset OTP sent to your email.", null);
-}
-
-@Override
-@Transactional
-public ApiResponse resetPassword(ResetPasswordRequest request) {
-    log.info("Reset password attempt for email: {}", request.getEmail());
-
-    User user = userRepository.findByEmail(request.getEmail().toLowerCase())
-            .orElseThrow(() -> new UserNotFoundException("User not found."));
-
-    // Reuses your existing OTP validation logic
-    otpService.validateOtp(user.getEmail(), request.getOtp());
-
-    user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
-    userRepository.save(user);
-
-    return new ApiResponse(true, "Password reset successfully. Please login.", null);
-}
-    @Override
-    @Transactional
-    public UserResponse register(RegisterRequest request) {
-
-        log.info(
-                "Registration attempt for email: {}",
-                request.getEmail()
-        );
-
-        validateUniqueFields(request);
-
-        // ADDED
-        if (!phoneValidator.isValid(
-                request.getPhoneNumber()
-        )) {
-
-            throw new InvalidPhoneNumberException(
-                    "Invalid phone number."
-            );
-        }
-
-        String passwordHash =
-                passwordEncoder.encode(
-                        request.getPassword()
-                );
-
-        User user = new User();
-
-        user.setUsername(
-                request.getUsername()
-        );
-
-        user.setEmail(
-                request.getEmail()
-                        .toLowerCase()
-        );
-
-        // UPDATED
-        user.setPhoneNumber(
-                phoneValidator.toE164(
-                        request.getPhoneNumber()
-                )
-        );
-
-        user.setPasswordHash(
-                passwordHash
-        );
-
-        user.setActive(
-                true
-        );
-
-        user = userRepository.save(user);
-
-        try {
-
-            emailService.sendWelcomeEmail(
-                    user.getEmail(),
-                    user.getUsername()
-            );
-
-        } catch (Exception e) {
-
-            log.warn(
-                    "Email failed: {}",
-                    e.getMessage()
-            );
-        }
-
-        return toUserResponse(user);
-    }
-    
-    @Override
-    public UserResponse getUserById(
-            UUID userId) {
-
-        User user =
-                userRepository
-                        .findById(
-                                userId
-                        )
-                        .orElseThrow(() ->
-                                new UserNotFoundException(
-                                        "User not found."
-                                ));
-
-        return toUserResponse(
-                user
-        );
+        this.messagingTemplate = messagingTemplate;
     }
 
     @Override
-    public UserResponse getUserByPhone(
-            String phoneNumber) {
+    public ApiResponse forgotPassword(ForgotPasswordRequest request) {
+        log.info("Forgot password request for email: {}", request.getEmail());
 
-        User user =
-                userRepository.findByPhoneNumber(
-                        phoneValidator.toE164(
-                                phoneNumber
-                        )
-                )
-                .orElseThrow(() ->
-                        new UserNotFoundException(
-                                "User not found."
-                        ));
+        User user = userRepository.findByEmail(request.getEmail().toLowerCase())
+                .orElseThrow(() -> new UserNotFoundException("No account found with this email."));
 
-        return toUserResponse(user);
-    }
-
-
-    @Override
-    public UserResponse getUserByUsername(
-            String username) {
-
-        User user =
-                userRepository.findByUsername(
-                        username
-                )
-                .orElseThrow(() ->
-                        new UserNotFoundException(
-                                "User not found."
-                        ));
-
-        return toUserResponse(user);
-    }
-
-
-    @Override
-    public ApiResponse login(
-            LoginRequest request) {
-
-        User user =
-                userRepository.findByEmail(
-                        request.getEmail()
-                                .toLowerCase()
-                )
-                .orElseThrow(() ->
-                        new InvalidCredentialsException(
-                                "Invalid email or password."
-                        ));
-
-        if (!passwordEncoder.matches(
-                request.getPassword(),
-                user.getPasswordHash()
-        )) {
-
-            throw new InvalidCredentialsException(
-                    "Invalid email or password."
-            );
-        }
-
-        String otp =
-                otpService.generateAndStoreOtp(
-                        user.getEmail()
-                );
+        String otp = otpService.generateAndStoreOtp(user.getEmail());
 
         emailService.sendOtpEmail(
                 user.getEmail(),
@@ -250,39 +68,101 @@ public ApiResponse resetPassword(ResetPasswordRequest request) {
                 otp
         );
 
-        return new ApiResponse(
-                true,
-                "OTP sent.",
-                null
-        );
+        return new ApiResponse(true, "Password reset OTP sent to your email.", null);
     }
 
+    @Override
+    @Transactional
+    public ApiResponse resetPassword(ResetPasswordRequest request) {
+        log.info("Reset password attempt for email: {}", request.getEmail());
+
+        User user = userRepository.findByEmail(request.getEmail().toLowerCase())
+                .orElseThrow(() -> new UserNotFoundException("User not found."));
+
+        otpService.validateOtp(user.getEmail(), request.getOtp());
+
+        user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+
+        return new ApiResponse(true, "Password reset successfully. Please login.", null);
+    }
 
     @Override
-    public AuthTokenResponse verifyOtp(
-            OtpVerifyRequest request) {
+    @Transactional
+    public UserResponse register(RegisterRequest request) {
 
-        User user =
-                userRepository.findByEmail(
-                        request.getEmail()
-                                .toLowerCase()
-                )
-                .orElseThrow(() ->
-                        new UserNotFoundException(
-                                "User not found."
-                        ));
+        log.info("Registration attempt for email: {}", request.getEmail());
 
-        otpService.validateOtp(
-                user.getEmail(),
-                request.getOtp()
-        );
+        validateUniqueFields(request);
 
-        String token =
-                jwtUtil.generateToken(
-                        user.getId(),
-                        user.getEmail(),
-                        user.getUsername()
-                );
+        if (!phoneValidator.isValid(request.getPhoneNumber())) {
+            throw new InvalidPhoneNumberException("Invalid phone number.");
+        }
+
+        String passwordHash = passwordEncoder.encode(request.getPassword());
+
+        User user = new User();
+        user.setUsername(request.getUsername());
+        user.setEmail(request.getEmail().toLowerCase());
+        user.setPhoneNumber(phoneValidator.toE164(request.getPhoneNumber()));
+        user.setPasswordHash(passwordHash);
+        user.setActive(true);
+
+        user = userRepository.save(user);
+
+        try {
+            emailService.sendWelcomeEmail(user.getEmail(), user.getUsername());
+        } catch (Exception e) {
+            log.warn("Email failed: {}", e.getMessage());
+        }
+
+        return toUserResponse(user);
+    }
+
+    @Override
+    public UserResponse getUserById(UUID userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("User not found."));
+        return toUserResponse(user);
+    }
+
+    @Override
+    public UserResponse getUserByPhone(String phoneNumber) {
+        User user = userRepository.findByPhoneNumber(phoneValidator.toE164(phoneNumber))
+                .orElseThrow(() -> new UserNotFoundException("User not found."));
+        return toUserResponse(user);
+    }
+
+    @Override
+    public UserResponse getUserByUsername(String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new UserNotFoundException("User not found."));
+        return toUserResponse(user);
+    }
+
+    @Override
+    public ApiResponse login(LoginRequest request) {
+        User user = userRepository.findByEmail(request.getEmail().toLowerCase())
+                .orElseThrow(() -> new InvalidCredentialsException("Invalid email or password."));
+
+        if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+            throw new InvalidCredentialsException("Invalid email or password.");
+        }
+
+        String otp = otpService.generateAndStoreOtp(user.getEmail());
+        emailService.sendOtpEmail(user.getEmail(), user.getUsername(), otp);
+
+        return new ApiResponse(true, "OTP sent.", null);
+    }
+
+    @Override
+    public AuthTokenResponse verifyOtp(OtpVerifyRequest request) {
+        User user = userRepository.findByEmail(request.getEmail().toLowerCase())
+                .orElseThrow(() -> new UserNotFoundException("User not found."));
+
+        otpService.validateOtp(user.getEmail(), request.getOtp());
+
+        String token = jwtUtil.generateToken(user.getId(), user.getEmail(), user.getUsername());
 
         return new AuthTokenResponse(
                 token,
@@ -292,21 +172,12 @@ public ApiResponse resetPassword(ResetPasswordRequest request) {
         );
     }
 
-
     @Override
-    public UserResponse getProfile(
-            UUID userId) {
-
-        User user =
-                userRepository.findById(userId)
-                        .orElseThrow(() ->
-                                new UserNotFoundException(
-                                        "User not found."
-                                ));
-
+    public UserResponse getProfile(UUID userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("User not found."));
         return toUserResponse(user);
     }
-
 
     @Override
     @Transactional
@@ -316,86 +187,57 @@ public ApiResponse resetPassword(ResetPasswordRequest request) {
             byte[] profilePicture,
             String pictureFilename) {
 
-        User user =
-                userRepository.findById(userId)
-                        .orElseThrow(() ->
-                                new UserNotFoundException(
-                                        "User not found."
-                                ));
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("User not found."));
 
-        if (StringUtils.hasText(
-                request.getUsername()
-        )) {
-
-            user.setUsername(
-                    request.getUsername()
-            );
+        if (StringUtils.hasText(request.getUsername())) {
+            user.setUsername(request.getUsername());
         }
 
-        if (StringUtils.hasText(
-                request.getNewPassword()
-        )) {
-
-            user.setPasswordHash(
-                    passwordEncoder.encode(
-                            request.getNewPassword()
-                    )
-            );
+        if (StringUtils.hasText(request.getNewPassword())) {
+            user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
         }
 
         if (profilePicture != null) {
             user.setProfilePicture(profilePicture);
         }
 
-        user =
-                userRepository.save(
-                        user
-                );
+        user = userRepository.save(user);
+
+        // ✅ Broadcast avatar update to all connected users instantly
+        String picUrl = user.getProfilePicture() != null
+                ? "/api/v1/auth/users/" + user.getId() + "/profile-picture"
+                : null;
+        messagingTemplate.convertAndSend(
+                "/topic/avatar-update",
+                new AvatarUpdateMessage(user.getId().toString(), picUrl)
+        );
 
         return toUserResponse(user);
     }
 
-
-    private void validateUniqueFields(
-            RegisterRequest request) {
-
-        if (userRepository.existsByEmail(
-                request.getEmail()
-                        .toLowerCase()
-        )) {
-
-            throw new UserAlreadyExistsException(
-                    "Email already exists."
-            );
+    private void validateUniqueFields(RegisterRequest request) {
+        if (userRepository.existsByEmail(request.getEmail().toLowerCase())) {
+            throw new UserAlreadyExistsException("Email already exists.");
         }
-
-        if (userRepository.existsByPhoneNumber(
-                phoneValidator.toE164(
-                        request.getPhoneNumber()
-                )
-        )) {
-
-            throw new UserAlreadyExistsException(
-                    "Phone number already exists."
-            );
+        if (userRepository.existsByPhoneNumber(phoneValidator.toE164(request.getPhoneNumber()))) {
+            throw new UserAlreadyExistsException("Phone number already exists.");
         }
     }
 
-
     private UserResponse toUserResponse(User user) {
-    // ✅ Send URL instead of raw base64
-    String profilePicUrl = user.getProfilePicture() != null
-            ? "/api/v1/auth/users/" + user.getId() + "/profile-picture"
-            : null;
+        String profilePicUrl = user.getProfilePicture() != null
+                ? "/api/v1/auth/users/" + user.getId() + "/profile-picture"
+                : null;
 
-    return new UserResponse(
-            user.getId().toString(),
-            user.getUsername(),
-            user.getEmail(),
-            user.getPhoneNumber(),
-            profilePicUrl,  // ✅ URL not base64
-            user.isActive(),
-            user.getCreatedAt() != null ? user.getCreatedAt().toString() : null
-    );
-}
+        return new UserResponse(
+                user.getId().toString(),
+                user.getUsername(),
+                user.getEmail(),
+                user.getPhoneNumber(),
+                profilePicUrl,
+                user.isActive(),
+                user.getCreatedAt() != null ? user.getCreatedAt().toString() : null
+        );
+    }
 }
