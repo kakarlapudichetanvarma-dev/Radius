@@ -1,77 +1,39 @@
-2026-05-22 08:53:12.373 INFO  [discovery-service] [main] c.c.d.EurekaServerApplication : Starting EurekaServerApplication using Java 17.0.17 with PID 712 (C:\Users\Administrator\Desktop\Radius-git\Radius\eureka-server\target\classes started by Administrator in C:\Users\Administrator\Desktop\Radius-git\Radius\eureka-server)
-2026-05-22 08:53:12.381 DEBUG [discovery-service] [main] c.c.d.EurekaServerApplication : Running with Spring Boot v3.3.0, Spring v6.1.8
-2026-05-22 08:53:12.383 INFO  [discovery-service] [main] c.c.d.EurekaServerApplication : No active profile set, falling back to 1 default profile: "default"
-2026-05-22 08:53:13.316 INFO  [discovery-service] [main] o.s.cloud.context.scope.GenericScope : BeanFactory id=af6e0d5b-3405-3037-9a4d-324e040a8666
-2026-05-22 08:53:13.371 WARN  [discovery-service] [main] o.s.c.s.PostProcessorRegistrationDelegate$BeanPostProcessorChecker : Bean 'org.springframework.cloud.client.loadbalancer.LoadBalancerAutoConfiguration$DeferringLoadBalancerInterceptorConfig' of type [org.springframework.cloud.client.loadbalancer.LoadBalancerAutoConfiguration$DeferringLoadBalancerInterceptorConfig] is not eligible for getting processed by all BeanPostProcessors (for example: not eligible for auto-proxying). The currently created BeanPostProcessor [lbRestClientPostProcessor] is declared through a non-static factory method on that class; consider declaring it as static instead.
-2026-05-22 08:53:13.374 WARN  [discovery-service] [main] o.s.c.s.PostProcessorRegistrationDelegate$BeanPostProcessorChecker : Bean 'deferringLoadBalancerInterceptor' of type [org.springframework.cloud.client.loadbalancer.DeferringLoadBalancerInterceptor] is not eligible for getting processed by all BeanPostProcessors (for example: not eligible for auto-proxying). Is this bean getting eagerly injected into a currently created BeanPostProcessor [lbRestClientPostProcessor]? Check the corresponding BeanPostProcessor declaration and its dependencies.
-2026-05-22 08:53:13.631 INFO  [discovery-service] [main] o.s.b.w.e.tomcat.TomcatWebServer : Tomcat initialized with port 8761 (http)
-2026-05-22 08:53:13.641 INFO  [discovery-service] [main] o.a.catalina.core.StandardService : Starting service [Tomcat]
-2026-05-22 08:53:13.641 INFO  [discovery-service] [main] o.a.catalina.core.StandardEngine : Starting Servlet engine: [Apache Tomcat/10.1.24]
-2026-05-22 08:53:13.794 INFO  [discovery-service] [main] o.a.c.c.C.[Tomcat].[localhost].[/] : Initializing Spring embedded WebApplicationContext
-2026-05-22 08:53:13.796 INFO  [discovery-service] [main] o.s.b.w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 1331 ms
-2026-05-22 08:53:15.596 WARN  [discovery-service] [main] o.s.c.l.c.LoadBalancerCacheAutoConfiguration$LoadBalancerCaffeineWarnLogger : Spring Cloud LoadBalancer is currently working with the default cache. While this cache implementation is useful for development and tests, it's recommended to use Caffeine cache in production.You can switch to using Caffeine cache, by adding it and org.springframework.cache.caffeine.CaffeineCacheManager to the classpath.
-2026-05-22 08:53:15.618 INFO  [discovery-service] [main] o.s.c.n.eureka.InstanceInfoFactory : Setting initial instance status as: STARTING
-2026-05-22 08:53:15.691 WARN  [discovery-service] [main] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-05-22 08:53:15.783 INFO  [discovery-service] [main] o.s.b.a.e.web.EndpointLinksResolver : Exposing 5 endpoints beneath base path '/actuator'
-2026-05-22 08:53:15.840 INFO  [discovery-service] [main] o.s.c.n.e.s.EurekaServiceRegistry : Registering application DISCOVERY-SERVICE with eureka with status UP
-2026-05-22 08:53:15.849 INFO  [discovery-service] [Thread-9] o.s.c.n.e.s.EurekaServerBootstrap : isAws returned false
-2026-05-22 08:53:15.850 INFO  [discovery-service] [Thread-9] o.s.c.n.e.s.EurekaServerBootstrap : Initialized server context
-2026-05-22 08:53:15.871 INFO  [discovery-service] [Thread-9] o.s.c.n.e.s.EurekaServerInitializerConfiguration : Started Eureka Server
-2026-05-22 08:53:15.889 INFO  [discovery-service] [main] o.s.b.w.e.tomcat.TomcatWebServer : Tomcat started on port 8761 (http) with context path '/'
-2026-05-22 08:53:15.890 INFO  [discovery-service] [main] o.s.c.n.e.s.EurekaAutoServiceRegistration : Updating port to 8761
-2026-05-22 08:53:15.974 INFO  [discovery-service] [main] c.c.d.EurekaServerApplication : Started EurekaServerApplication in 4.094 seconds (process running for 4.475)
-2026-05-22 08:53:15.984 INFO  [discovery-service] [main] c.c.d.EurekaServerApplication : =======================================================
-2026-05-22 08:53:15.986 INFO  [discovery-service] [main] c.c.d.EurekaServerApplication :   Eureka Discovery Server started successfully
-2026-05-22 08:53:15.986 INFO  [discovery-service] [main] c.c.d.EurekaServerApplication :   Dashboard ? http://localhost:8761
-2026-05-22 08:53:15.987 INFO  [discovery-service] [main] c.c.d.EurekaServerApplication :   Health   ? http://localhost:8761/actuator/health
-2026-05-22 08:53:15.988 INFO  [discovery-service] [main] c.c.d.EurekaServerApplication : =======================================================
-2026-05-22 08:53:38.401 INFO  [discovery-service] [http-nio-8761-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/] : Initializing Spring DispatcherServlet 'dispatcherServlet'
-2026-05-22 08:53:38.401 INFO  [discovery-service] [http-nio-8761-exec-1] o.s.web.servlet.DispatcherServlet : Initializing Servlet 'dispatcherServlet'
-2026-05-22 08:53:38.401 INFO  [discovery-service] [http-nio-8761-exec-1] o.s.web.servlet.DispatcherServlet : Completed initialization in 0 ms
-2026-05-22 09:03:15.693 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-05-22 09:13:15.695 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-05-22 09:23:15.697 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-05-22 09:33:15.698 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-05-22 09:43:15.699 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-05-22 09:53:15.711 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-05-22 10:03:15.713 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-05-22 10:13:15.716 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-05-22 10:23:15.717 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-05-22 10:33:15.718 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-05-22 10:43:15.724 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-05-22 10:53:15.727 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-05-22 11:03:15.736 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-05-22 11:13:15.738 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-05-22 11:23:15.744 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-05-22 11:33:15.757 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-05-22 11:43:15.759 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-05-22 11:53:15.772 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-05-22 12:03:15.778 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-05-22 12:13:15.779 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-05-22 12:23:15.786 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-05-22 12:33:15.790 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-05-22 12:43:15.791 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-05-22 12:53:15.795 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-05-22 13:03:15.803 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-05-22 13:13:15.805 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-05-22 13:23:15.810 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-05-22 13:33:15.813 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-05-22 13:43:15.815 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-05-22 13:53:15.817 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-05-22 14:03:15.818 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-05-22 14:13:15.829 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-05-22 14:23:15.832 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-05-22 14:33:15.833 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-05-22 14:43:15.834 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-05-22 14:53:15.835 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-05-22 15:03:15.837 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-05-22 15:13:15.839 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-05-22 15:23:15.847 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-05-22 15:33:15.854 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-05-22 15:43:15.856 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-05-22 15:53:15.859 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-05-22 16:03:15.862 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-05-22 16:13:15.863 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-05-22 16:23:15.865 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-05-22 16:33:15.866 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-05-22 16:43:15.870 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
+2026-05-23 09:29:03.735 INFO  [discovery-service] [main] c.c.d.EurekaServerApplication : Starting EurekaServerApplication using Java 17.0.17 with PID 17904 (C:\Users\Administrator\Desktop\Radius-git\Radius\eureka-server\target\classes started by Administrator in C:\Users\Administrator\Desktop\Radius-git\Radius\eureka-server)
+2026-05-23 09:29:03.744 DEBUG [discovery-service] [main] c.c.d.EurekaServerApplication : Running with Spring Boot v3.3.0, Spring v6.1.8
+2026-05-23 09:29:03.746 INFO  [discovery-service] [main] c.c.d.EurekaServerApplication : No active profile set, falling back to 1 default profile: "default"
+2026-05-23 09:29:04.692 INFO  [discovery-service] [main] o.s.cloud.context.scope.GenericScope : BeanFactory id=af6e0d5b-3405-3037-9a4d-324e040a8666
+2026-05-23 09:29:04.733 WARN  [discovery-service] [main] o.s.c.s.PostProcessorRegistrationDelegate$BeanPostProcessorChecker : Bean 'org.springframework.cloud.client.loadbalancer.LoadBalancerAutoConfiguration$DeferringLoadBalancerInterceptorConfig' of type [org.springframework.cloud.client.loadbalancer.LoadBalancerAutoConfiguration$DeferringLoadBalancerInterceptorConfig] is not eligible for getting processed by all BeanPostProcessors (for example: not eligible for auto-proxying). The currently created BeanPostProcessor [lbRestClientPostProcessor] is declared through a non-static factory method on that class; consider declaring it as static instead.
+2026-05-23 09:29:04.736 WARN  [discovery-service] [main] o.s.c.s.PostProcessorRegistrationDelegate$BeanPostProcessorChecker : Bean 'deferringLoadBalancerInterceptor' of type [org.springframework.cloud.client.loadbalancer.DeferringLoadBalancerInterceptor] is not eligible for getting processed by all BeanPostProcessors (for example: not eligible for auto-proxying). Is this bean getting eagerly injected into a currently created BeanPostProcessor [lbRestClientPostProcessor]? Check the corresponding BeanPostProcessor declaration and its dependencies.
+2026-05-23 09:29:04.983 INFO  [discovery-service] [main] o.s.b.w.e.tomcat.TomcatWebServer : Tomcat initialized with port 8761 (http)
+2026-05-23 09:29:04.993 INFO  [discovery-service] [main] o.a.catalina.core.StandardService : Starting service [Tomcat]
+2026-05-23 09:29:04.995 INFO  [discovery-service] [main] o.a.catalina.core.StandardEngine : Starting Servlet engine: [Apache Tomcat/10.1.24]
+2026-05-23 09:29:05.109 INFO  [discovery-service] [main] o.a.c.c.C.[Tomcat].[localhost].[/] : Initializing Spring embedded WebApplicationContext
+2026-05-23 09:29:05.109 INFO  [discovery-service] [main] o.s.b.w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 1305 ms
+2026-05-23 09:29:06.692 WARN  [discovery-service] [main] o.s.c.l.c.LoadBalancerCacheAutoConfiguration$LoadBalancerCaffeineWarnLogger : Spring Cloud LoadBalancer is currently working with the default cache. While this cache implementation is useful for development and tests, it's recommended to use Caffeine cache in production.You can switch to using Caffeine cache, by adding it and org.springframework.cache.caffeine.CaffeineCacheManager to the classpath.
+2026-05-23 09:29:06.708 INFO  [discovery-service] [main] o.s.c.n.eureka.InstanceInfoFactory : Setting initial instance status as: STARTING
+2026-05-23 09:29:06.766 WARN  [discovery-service] [main] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
+2026-05-23 09:29:06.827 INFO  [discovery-service] [main] o.s.b.a.e.web.EndpointLinksResolver : Exposing 5 endpoints beneath base path '/actuator'
+2026-05-23 09:29:06.878 INFO  [discovery-service] [main] o.s.c.n.e.s.EurekaServiceRegistry : Registering application DISCOVERY-SERVICE with eureka with status UP
+2026-05-23 09:29:06.889 INFO  [discovery-service] [Thread-9] o.s.c.n.e.s.EurekaServerBootstrap : isAws returned false
+2026-05-23 09:29:06.889 INFO  [discovery-service] [Thread-9] o.s.c.n.e.s.EurekaServerBootstrap : Initialized server context
+2026-05-23 09:29:06.898 INFO  [discovery-service] [Thread-9] o.s.c.n.e.s.EurekaServerInitializerConfiguration : Started Eureka Server
+2026-05-23 09:29:06.902 INFO  [discovery-service] [main] o.s.b.w.e.tomcat.TomcatWebServer : Tomcat started on port 8761 (http) with context path '/'
+2026-05-23 09:29:06.903 INFO  [discovery-service] [main] o.s.c.n.e.s.EurekaAutoServiceRegistration : Updating port to 8761
+2026-05-23 09:29:06.981 INFO  [discovery-service] [main] c.c.d.EurekaServerApplication : Started EurekaServerApplication in 3.751 seconds (process running for 4.178)
+2026-05-23 09:29:06.995 INFO  [discovery-service] [main] c.c.d.EurekaServerApplication : =======================================================
+2026-05-23 09:29:06.996 INFO  [discovery-service] [main] c.c.d.EurekaServerApplication :   Eureka Discovery Server started successfully
+2026-05-23 09:29:06.997 INFO  [discovery-service] [main] c.c.d.EurekaServerApplication :   Dashboard ? http://localhost:8761
+2026-05-23 09:29:06.998 INFO  [discovery-service] [main] c.c.d.EurekaServerApplication :   Health   ? http://localhost:8761/actuator/health
+2026-05-23 09:29:06.999 INFO  [discovery-service] [main] c.c.d.EurekaServerApplication : =======================================================
+2026-05-23 09:29:48.419 INFO  [discovery-service] [http-nio-8761-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/] : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-05-23 09:29:48.419 INFO  [discovery-service] [http-nio-8761-exec-1] o.s.web.servlet.DispatcherServlet : Initializing Servlet 'dispatcherServlet'
+2026-05-23 09:29:48.421 INFO  [discovery-service] [http-nio-8761-exec-1] o.s.web.servlet.DispatcherServlet : Completed initialization in 1 ms
+2026-05-23 09:39:06.769 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
+2026-05-23 09:49:06.774 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
+2026-05-23 09:59:06.776 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
+2026-05-23 10:09:06.782 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
+2026-05-23 10:19:06.800 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
+2026-05-23 10:29:06.801 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
+2026-05-23 10:39:06.803 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
+2026-05-23 10:49:06.804 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
+2026-05-23 10:59:06.812 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
