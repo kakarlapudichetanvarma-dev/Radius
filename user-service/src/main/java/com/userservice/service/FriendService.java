@@ -24,4 +24,15 @@ public interface FriendService {
     List<FriendRequestResponse> listPendingRequests(
             UUID userId,
             String token);
+
+    UserSearchResult searchByPhone(
+            UUID requesterId,
+            String phone,
+            String token);
+
+    FriendSummaryResponse addDirectFriend(
+            UUID requesterId,
+            String phoneNumber,
+            String token);
+
 }

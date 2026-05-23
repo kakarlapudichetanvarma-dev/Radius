@@ -36,6 +36,7 @@ public class FriendServiceImpl implements FriendService {
             FriendRequestRepository friendRequestRepository,
             FriendRepository friendRepository,
             AuthServiceClient authServiceClient) {
+
         this.friendRequestRepository = friendRequestRepository;
         this.friendRepository = friendRepository;
         this.authServiceClient = authServiceClient;
@@ -51,64 +52,99 @@ public class FriendServiceImpl implements FriendService {
             String targetPhoneNumber,
             String token) {
 
-        // Step 1: Fetch receiver
         AuthApiResponse receiverApiResponse =
-                authServiceClient.getUserByPhone(targetPhoneNumber, token);
+                authServiceClient.getUserByPhone(
+                        targetPhoneNumber,
+                        token
+                );
 
         if (receiverApiResponse == null
                 || !receiverApiResponse.isSuccess()
                 || receiverApiResponse.getData() == null) {
+
             throw new RuntimeException(
-                    "Could not find user with phone number: " + targetPhoneNumber);
+                    "Could not find user with phone number: "
+                            + targetPhoneNumber);
         }
 
-        AuthUserResponse receiverAuth = receiverApiResponse.getData();
-        UUID receiverId = UUID.fromString(receiverAuth.getId());
+        AuthUserResponse receiverAuth =
+                receiverApiResponse.getData();
+
+        UUID receiverId =
+                UUID.fromString(receiverAuth.getId());
 
         if (receiverId.equals(requesterId)) {
             throw new SelfFriendRequestException(
                     "You cannot send a friend request to yourself.");
         }
 
-        // Step 2: Already friends?
-        if (friendRepository.existsByUserIdAndFriendId(requesterId, receiverId)) {
-            throw new AlreadyFriendsException("You are already friends with this user.");
+        if (friendRepository.existsByUserIdAndFriendId(
+                requesterId,
+                receiverId)) {
+
+            throw new AlreadyFriendsException(
+                    "You are already friends with this user.");
         }
 
-        // Step 3: Check existing request
         Optional<FriendRequest> existingOpt =
                 friendRequestRepository.findBetweenWithStatuses(
-                        requesterId, receiverId,
-                        List.of(Status.PENDING, Status.ACCEPTED, Status.REJECTED));
+                        requesterId,
+                        receiverId,
+                        List.of(
+                                Status.PENDING,
+                                Status.ACCEPTED,
+                                Status.REJECTED
+                        )
+                );
 
         if (existingOpt.isPresent()) {
+
             FriendRequest existing = existingOpt.get();
 
             if (existing.getStatus() == Status.PENDING) {
                 throw new FriendRequestAlreadyExistsException(
                         "A friend request is already pending.");
             }
+
             if (existing.getStatus() == Status.ACCEPTED) {
-                throw new AlreadyFriendsException("You are already friends.");
+                throw new AlreadyFriendsException(
+                        "You are already friends.");
             }
+
             if (existing.getStatus() == Status.REJECTED) {
+
                 if (existing.getRequesterId().equals(requesterId)) {
-                    AuthUserResponse requesterAuth = getRequesterAuth(requesterId, token);
+
+                    AuthUserResponse requesterAuth =
+                            getRequesterAuth(requesterId, token);
+
                     existing.setStatus(Status.PENDING);
-                    existing.setRequesterUsername(requesterAuth.getUsername());
+                    existing.setRequesterUsername(
+                            requesterAuth.getUsername()
+                    );
                     existing.setEmail(requesterAuth.getEmail());
-                    existing.setPhoneNumber(requesterAuth.getPhoneNumber());
-                    FriendRequest updated = friendRequestRepository.save(existing);
-                    return toRequestResponse(updated, requesterAuth);
+                    existing.setPhoneNumber(
+                            requesterAuth.getPhoneNumber()
+                    );
+
+                    FriendRequest updated =
+                            friendRequestRepository.save(existing);
+
+                    return toRequestResponse(
+                            updated,
+                            requesterAuth
+                    );
                 }
+
                 friendRequestRepository.delete(existing);
             }
         }
 
-        // Step 4: Create new request
-        AuthUserResponse requesterAuth = getRequesterAuth(requesterId, token);
+        AuthUserResponse requesterAuth =
+                getRequesterAuth(requesterId, token);
 
         FriendRequest fr = new FriendRequest();
+
         fr.setRequesterId(requesterId);
         fr.setReceiverId(receiverId);
         fr.setRequesterUsername(requesterAuth.getUsername());
@@ -117,6 +153,7 @@ public class FriendServiceImpl implements FriendService {
         fr.setStatus(Status.PENDING);
 
         fr = friendRequestRepository.save(fr);
+
         return toRequestResponse(fr, requesterAuth);
     }
 
@@ -131,108 +168,148 @@ public class FriendServiceImpl implements FriendService {
             boolean accept,
             String token) {
 
-        FriendRequest fr = friendRequestRepository
-                .findByIdAndReceiverIdAndStatus(requestId, receiverId, Status.PENDING)
-                .orElseThrow(() -> new FriendRequestNotFoundException(
-                        "No pending friend request found."));
+        FriendRequest fr =
+                friendRequestRepository
+                        .findByIdAndReceiverIdAndStatus(
+                                requestId,
+                                receiverId,
+                                Status.PENDING
+                        )
+                        .orElseThrow(() ->
+                                new FriendRequestNotFoundException(
+                                        "No pending friend request found."
+                                )
+                        );
 
         if (accept) {
+
             fr.setStatus(Status.ACCEPTED);
 
-            // Fetch BOTH users
-            AuthUserResponse requesterAuth = getRequesterAuth(fr.getRequesterId(), token);
-            AuthUserResponse receiverAuth  = getRequesterAuth(fr.getReceiverId(), token);
+            AuthUserResponse requesterAuth =
+                    getRequesterAuth(fr.getRequesterId(), token);
 
-            // ── Debug logs so you can see exactly what comes back ──────────
-            log.info("=== ACCEPT FRIEND REQUEST ===");
-            log.info("requesterAuth: " + (requesterAuth == null ? "NULL" :
-                    requesterAuth.getUsername() + " / " + requesterAuth.getEmail()
-                            + " / " + requesterAuth.getPhoneNumber()));
-            log.info("receiverAuth: " + (receiverAuth == null ? "NULL" :
-                    receiverAuth.getUsername() + " / " + receiverAuth.getEmail()
-                            + " / " + receiverAuth.getPhoneNumber()));
+            AuthUserResponse receiverAuth =
+                    getRequesterAuth(fr.getReceiverId(), token);
 
             LocalDateTime now = LocalDateTime.now();
 
-            // friend1 row: owned by requester, stores RECEIVER's profile
             Friend friend1 = new Friend();
             friend1.setUserId(fr.getRequesterId());
             friend1.setFriendId(fr.getReceiverId());
             friend1.setSince(now);
+
             if (receiverAuth != null) {
                 friend1.setUsername(receiverAuth.getUsername());
                 friend1.setEmail(receiverAuth.getEmail());
                 friend1.setPhoneNumber(receiverAuth.getPhoneNumber());
-                friend1.setProfilePicture(receiverAuth.getProfilePicture());
+                friend1.setProfilePicture(
+                        receiverAuth.getProfilePicture()
+                );
             }
-            friendRepository.save(friend1);
-            log.info("Saved friend1 → userId=" + fr.getRequesterId()
-                    + " friendId=" + fr.getReceiverId()
-                    + " username=" + friend1.getUsername());
 
-            // friend2 row: owned by receiver, stores REQUESTER's profile
+            friendRepository.save(friend1);
+
             Friend friend2 = new Friend();
             friend2.setUserId(fr.getReceiverId());
             friend2.setFriendId(fr.getRequesterId());
             friend2.setSince(now);
+
             if (requesterAuth != null) {
                 friend2.setUsername(requesterAuth.getUsername());
                 friend2.setEmail(requesterAuth.getEmail());
                 friend2.setPhoneNumber(requesterAuth.getPhoneNumber());
-                friend2.setProfilePicture(requesterAuth.getProfilePicture());
+                friend2.setProfilePicture(
+                        requesterAuth.getProfilePicture()
+                );
             }
+
             friendRepository.save(friend2);
-            log.info("Saved friend2 → userId=" + fr.getReceiverId()
-                    + " friendId=" + fr.getRequesterId()
-                    + " username=" + friend2.getUsername());
 
             fr = friendRequestRepository.save(fr);
+
             return toRequestResponse(fr, requesterAuth);
 
         } else {
+
             fr.setStatus(Status.REJECTED);
+
             fr = friendRequestRepository.save(fr);
-            AuthUserResponse requesterAuth = getRequesterAuth(fr.getRequesterId(), token);
+
+            AuthUserResponse requesterAuth =
+                    getRequesterAuth(fr.getRequesterId(), token);
+
             return toRequestResponse(fr, requesterAuth);
         }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // List friends  ← phoneNumber fix is here
+    // List friends
     // ─────────────────────────────────────────────────────────────────────────
     @Override
-    public List<FriendSummaryResponse> listFriends(UUID userId, String token) {
+    public List<FriendSummaryResponse> listFriends(
+            UUID userId,
+            String token) {
+
         return friendRepository
                 .findAllByUserId(userId)
                 .stream()
                 .map(f -> {
-                    FriendSummaryResponse response = new FriendSummaryResponse();
-                    response.setUserId(f.getFriendId().toString());
-                    response.setFriendsSince(f.getSince().toString());
 
-                    // ── Use stored DB values as fallback (works even if auth is down)
+                    FriendSummaryResponse response =
+                            new FriendSummaryResponse();
+
+                    response.setUserId(
+                            f.getFriendId().toString()
+                    );
+
+                    response.setFriendsSince(
+                            f.getSince().toString()
+                    );
+
                     response.setUsername(f.getUsername());
-                    response.setEmail(f.getEmail());           // ← was missing
-                    response.setPhoneNumber(f.getPhoneNumber()); // ← was missing
-                    response.setProfilePicture(f.getProfilePicture());
+                    response.setEmail(f.getEmail());
+                    response.setPhoneNumber(
+                            f.getPhoneNumber()
+                    );
+                    response.setProfilePicture(
+                            f.getProfilePicture()
+                    );
 
-                    // ── Try live refresh from auth service
                     try {
+
                         AuthApiResponse apiResponse =
-                                authServiceClient.getUserById(f.getFriendId(), token);
+                                authServiceClient.getUserById(
+                                        f.getFriendId(),
+                                        token
+                                );
+
                         if (apiResponse != null
                                 && apiResponse.isSuccess()
                                 && apiResponse.getData() != null) {
-                            AuthUserResponse auth = apiResponse.getData();
+
+                            AuthUserResponse auth =
+                                    apiResponse.getData();
+
                             response.setUsername(auth.getUsername());
                             response.setEmail(auth.getEmail());
-                            response.setPhoneNumber(auth.getPhoneNumber());
-                            response.setProfilePicture(auth.getProfilePicture());
+                            response.setPhoneNumber(
+                                    auth.getPhoneNumber()
+                            );
+                            response.setProfilePicture(
+                                    auth.getProfilePicture()
+                            );
                         }
+
                     } catch (Exception ex) {
-                        log.warning("Failed to fetch friend profile for "
-                                + f.getFriendId() + ": " + ex.getMessage());
+
+                        log.warning(
+                                "Failed to fetch friend profile for "
+                                        + f.getFriendId()
+                                        + ": "
+                                        + ex.getMessage()
+                        );
                     }
+
                     return response;
                 })
                 .collect(Collectors.toList());
@@ -242,88 +319,351 @@ public class FriendServiceImpl implements FriendService {
     // List pending requests
     // ─────────────────────────────────────────────────────────────────────────
     @Override
-    public List<FriendRequestResponse> listPendingRequests(UUID userId, String token) {
+    public List<FriendRequestResponse> listPendingRequests(
+            UUID userId,
+            String token) {
+
         return friendRequestRepository
-                .findByReceiverIdAndStatus(userId, Status.PENDING)
+                .findByReceiverIdAndStatus(
+                        userId,
+                        Status.PENDING
+                )
                 .stream()
                 .map(fr -> {
-                    FriendRequestResponse response = new FriendRequestResponse();
-                    response.setRequestId(fr.getId().toString());
-                    response.setRequesterId(fr.getRequesterId().toString());
-                    response.setStatus(fr.getStatus().name());
-                    response.setCreatedAt(
-                            fr.getCreatedAt() != null ? fr.getCreatedAt().toString() : null);
 
-                    // Stored snapshot as fallback
-                    response.setRequesterUsername(fr.getRequesterUsername());
+                    FriendRequestResponse response =
+                            new FriendRequestResponse();
+
+                    response.setRequestId(fr.getId().toString());
+
+                    response.setRequesterId(
+                            fr.getRequesterId().toString()
+                    );
+
+                    response.setStatus(fr.getStatus().name());
+
+                    response.setCreatedAt(
+                            fr.getCreatedAt() != null
+                                    ? fr.getCreatedAt().toString()
+                                    : null
+                    );
+
+                    response.setRequesterUsername(
+                            fr.getRequesterUsername()
+                    );
+
                     response.setEmail(fr.getEmail());
-                    response.setPhoneNumber(fr.getPhoneNumber());
+
+                    response.setPhoneNumber(
+                            fr.getPhoneNumber()
+                    );
 
                     try {
+
                         AuthApiResponse apiResponse =
-                                authServiceClient.getUserById(fr.getRequesterId(), token);
+                                authServiceClient.getUserById(
+                                        fr.getRequesterId(),
+                                        token
+                                );
+
                         if (apiResponse != null
                                 && apiResponse.isSuccess()
                                 && apiResponse.getData() != null) {
-                            AuthUserResponse authUser = apiResponse.getData();
-                            response.setRequesterUsername(authUser.getUsername());
-                            response.setEmail(authUser.getEmail());
-                            response.setPhoneNumber(authUser.getPhoneNumber());
-                            response.setProfilePicture(authUser.getProfilePicture());
+
+                            AuthUserResponse authUser =
+                                    apiResponse.getData();
+
+                            response.setRequesterUsername(
+                                    authUser.getUsername()
+                            );
+
+                            response.setEmail(
+                                    authUser.getEmail()
+                            );
+
+                            response.setPhoneNumber(
+                                    authUser.getPhoneNumber()
+                            );
+
+                            response.setProfilePicture(
+                                    authUser.getProfilePicture()
+                            );
                         }
+
                     } catch (Exception ex) {
-                        log.warning("Failed to fetch requester profile: " + ex.getMessage());
+
+                        log.warning(
+                                "Failed to fetch requester profile: "
+                                        + ex.getMessage()
+                        );
                     }
+
                     return response;
                 })
                 .collect(Collectors.toList());
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+    // Search by phone
+    // ─────────────────────────────────────────────────────────────────────────
+    @Override
+    public UserSearchResult searchByPhone(
+            UUID requesterId,
+            String phone,
+            String token) {
+
+        AuthApiResponse apiResponse =
+                authServiceClient.getUserByPhone(phone, token);
+
+        if (apiResponse == null
+                || !apiResponse.isSuccess()
+                || apiResponse.getData() == null) {
+
+            throw new RuntimeException(
+                    "No user found with phone number: " + phone);
+        }
+
+        AuthUserResponse found = apiResponse.getData();
+
+        UUID foundId =
+                UUID.fromString(found.getId());
+
+        if (foundId.equals(requesterId)) {
+            throw new RuntimeException(
+                    "That is your own number.");
+        }
+
+        boolean alreadyFriend =
+                friendRepository.existsByUserIdAndFriendId(
+                        requesterId,
+                        foundId
+                );
+
+        UserSearchResult result =
+                new UserSearchResult();
+
+        result.setUserId(found.getId());
+        result.setUsername(found.getUsername());
+        result.setPhoneNumber(found.getPhoneNumber());
+        result.setProfilePicture(found.getProfilePicture());
+        result.setAlreadyFriend(alreadyFriend);
+
+        return result;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // DIRECT ADD FRIEND
+    // ─────────────────────────────────────────────────────────────────────────
+    @Override
+    @Transactional
+    public FriendSummaryResponse addDirectFriend(
+            UUID requesterId,
+            String phoneNumber,
+            String token) {
+
+        AuthApiResponse apiResponse =
+                authServiceClient.getUserByPhone(
+                        phoneNumber,
+                        token
+                );
+
+        if (apiResponse == null
+                || !apiResponse.isSuccess()
+                || apiResponse.getData() == null) {
+
+            throw new RuntimeException(
+                    "No user found with phone number: "
+                            + phoneNumber);
+        }
+
+        AuthUserResponse targetUser =
+                apiResponse.getData();
+
+        UUID targetUserId =
+                UUID.fromString(targetUser.getId());
+
+        if (targetUserId.equals(requesterId)) {
+            throw new RuntimeException(
+                    "You cannot add yourself.");
+        }
+
+        boolean alreadyFriend =
+                friendRepository.existsByUserIdAndFriendId(
+                        requesterId,
+                        targetUserId
+                );
+
+        if (alreadyFriend) {
+            throw new RuntimeException(
+                    "Already friends.");
+        }
+
+        AuthUserResponse requesterAuth =
+                getRequesterAuth(requesterId, token);
+
+        LocalDateTime now = LocalDateTime.now();
+
+        Friend friend1 = new Friend();
+        friend1.setUserId(requesterId);
+        friend1.setFriendId(targetUserId);
+        friend1.setUsername(targetUser.getUsername());
+        friend1.setEmail(targetUser.getEmail());
+        friend1.setPhoneNumber(targetUser.getPhoneNumber());
+        friend1.setProfilePicture(
+                targetUser.getProfilePicture()
+        );
+        friend1.setSince(now);
+
+        friendRepository.save(friend1);
+
+        Friend friend2 = new Friend();
+        friend2.setUserId(targetUserId);
+        friend2.setFriendId(requesterId);
+
+        if (requesterAuth != null) {
+
+            friend2.setUsername(
+                    requesterAuth.getUsername()
+            );
+
+            friend2.setEmail(
+                    requesterAuth.getEmail()
+            );
+
+            friend2.setPhoneNumber(
+                    requesterAuth.getPhoneNumber()
+            );
+
+            friend2.setProfilePicture(
+                    requesterAuth.getProfilePicture()
+            );
+        }
+
+        friend2.setSince(now);
+
+        friendRepository.save(friend2);
+
+        FriendSummaryResponse response =
+                new FriendSummaryResponse();
+
+        response.setUserId(targetUser.getId());
+        response.setUsername(targetUser.getUsername());
+        response.setEmail(targetUser.getEmail());
+        response.setPhoneNumber(targetUser.getPhoneNumber());
+        response.setProfilePicture(
+                targetUser.getProfilePicture()
+        );
+
+        response.setFriendsSince(now.toString());
+
+        return response;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
     // Helpers
     // ─────────────────────────────────────────────────────────────────────────
-    private AuthUserResponse getRequesterAuth(UUID userId, String token) {
-    int maxRetries = 3;
-    for (int i = 0; i < maxRetries; i++) {
-        try {
-            AuthApiResponse apiResponse = authServiceClient.getUserById(userId, token);
-            if (apiResponse != null
-                    && apiResponse.isSuccess()
-                    && apiResponse.getData() != null) {
-                return apiResponse.getData();
-            }
-        } catch (Exception ex) {
-            log.warning("getRequesterAuth attempt " + (i+1) + " failed for userId="
-                    + userId + ": " + ex.getMessage());
-            if (i < maxRetries - 1) {
-                try { Thread.sleep(500); } catch (InterruptedException ignored) {}
+    private AuthUserResponse getRequesterAuth(
+            UUID userId,
+            String token) {
+
+        int maxRetries = 3;
+
+        for (int i = 0; i < maxRetries; i++) {
+
+            try {
+
+                AuthApiResponse apiResponse =
+                        authServiceClient.getUserById(
+                                userId,
+                                token
+                        );
+
+                if (apiResponse != null
+                        && apiResponse.isSuccess()
+                        && apiResponse.getData() != null) {
+
+                    return apiResponse.getData();
+                }
+
+            } catch (Exception ex) {
+
+                log.warning(
+                        "getRequesterAuth attempt "
+                                + (i + 1)
+                                + " failed for userId="
+                                + userId
+                                + ": "
+                                + ex.getMessage()
+                );
+
+                if (i < maxRetries - 1) {
+
+                    try {
+                        Thread.sleep(500);
+                    } catch (InterruptedException ignored) {
+                    }
+                }
             }
         }
+
+        log.warning(
+                "getRequesterAuth: all retries failed for userId="
+                        + userId
+        );
+
+        return null;
     }
-    log.warning("getRequesterAuth: all retries failed for userId=" + userId);
-    return null;
-}
 
     private FriendRequestResponse toRequestResponse(
-            FriendRequest fr, AuthUserResponse authUser) {
+            FriendRequest fr,
+            AuthUserResponse authUser) {
 
-        FriendRequestResponse response = new FriendRequestResponse();
+        FriendRequestResponse response =
+                new FriendRequestResponse();
+
         response.setRequestId(fr.getId().toString());
-        response.setRequesterId(fr.getRequesterId().toString());
+
+        response.setRequesterId(
+                fr.getRequesterId().toString()
+        );
+
         response.setStatus(fr.getStatus().name());
+
         response.setCreatedAt(
-                fr.getCreatedAt() != null ? fr.getCreatedAt().toString() : null);
+                fr.getCreatedAt() != null
+                        ? fr.getCreatedAt().toString()
+                        : null
+        );
 
         if (authUser != null) {
-            response.setRequesterUsername(authUser.getUsername());
+
+            response.setRequesterUsername(
+                    authUser.getUsername()
+            );
+
             response.setEmail(authUser.getEmail());
-            response.setPhoneNumber(authUser.getPhoneNumber());
-            response.setProfilePicture(authUser.getProfilePicture());
+
+            response.setPhoneNumber(
+                    authUser.getPhoneNumber()
+            );
+
+            response.setProfilePicture(
+                    authUser.getProfilePicture()
+            );
+
         } else {
-            response.setRequesterUsername(fr.getRequesterUsername());
+
+            response.setRequesterUsername(
+                    fr.getRequesterUsername()
+            );
+
             response.setEmail(fr.getEmail());
-            response.setPhoneNumber(fr.getPhoneNumber());
+
+            response.setPhoneNumber(
+                    fr.getPhoneNumber()
+            );
         }
+
         return response;
     }
 }

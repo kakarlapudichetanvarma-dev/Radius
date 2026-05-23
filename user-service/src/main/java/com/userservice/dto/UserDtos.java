@@ -65,7 +65,7 @@ public class UserDtos {
 
         private String userId;
         private String username;
-        private String email;           // ← already missing, add this
+        private String email;
         private String profilePicture;
         private String friendsSince;
         private String phoneNumber;
@@ -91,7 +91,6 @@ public class UserDtos {
         public void setPhoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; }
     }
 
-   
     public static class FriendRequestResponse {
 
         private String requestId;
@@ -106,69 +105,57 @@ public class UserDtos {
         public FriendRequestResponse() {
         }
 
-        public String getRequestId() {
-            return requestId;
-        }
+        public String getRequestId() { return requestId; }
+        public void setRequestId(String requestId) { this.requestId = requestId; }
 
-        public void setRequestId(String requestId) {
-            this.requestId = requestId;
-        }
+        public String getRequesterId() { return requesterId; }
+        public void setRequesterId(String requesterId) { this.requesterId = requesterId; }
 
-        public String getRequesterId() {
-            return requesterId;
-        }
+        public String getRequesterUsername() { return requesterUsername; }
+        public void setRequesterUsername(String requesterUsername) { this.requesterUsername = requesterUsername; }
 
-        public void setRequesterId(String requesterId) {
-            this.requesterId = requesterId;
-        }
+        public String getEmail() { return email; }
+        public void setEmail(String email) { this.email = email; }
 
-        public String getRequesterUsername() {
-            return requesterUsername;
-        }
+        public String getPhoneNumber() { return phoneNumber; }
+        public void setPhoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; }
 
-        public void setRequesterUsername(String requesterUsername) {
-            this.requesterUsername = requesterUsername;
-        }
+        public String getProfilePicture() { return profilePicture; }
+        public void setProfilePicture(String profilePicture) { this.profilePicture = profilePicture; }
 
-        public String getEmail() {
-            return email;
-        }
+        public String getStatus() { return status; }
+        public void setStatus(String status) { this.status = status; }
 
-        public void setEmail(String email) {
-            this.email = email;
-        }
+        public String getCreatedAt() { return createdAt; }
+        public void setCreatedAt(String createdAt) { this.createdAt = createdAt; }
+    }
 
-        public String getPhoneNumber() {
-            return phoneNumber;
-        }
+    // ── NEW: returned by GET /friends/search-by-phone ─────────────────────────
 
-        public void setPhoneNumber(String phoneNumber) {
-            this.phoneNumber = phoneNumber;
-        }
+    public static class UserSearchResult {
 
-        public String getProfilePicture() {
-            return profilePicture;
-        }
+        private String userId;
+        private String username;
+        private String phoneNumber;
+        private String profilePicture;
+        private boolean alreadyFriend;
 
-        public void setProfilePicture(String profilePicture) {
-            this.profilePicture = profilePicture;
-        }
+        public UserSearchResult() {}
 
-        public String getStatus() {
-            return status;
-        }
+        public String getUserId() { return userId; }
+        public void setUserId(String userId) { this.userId = userId; }
 
-        public void setStatus(String status) {
-            this.status = status;
-        }
+        public String getUsername() { return username; }
+        public void setUsername(String username) { this.username = username; }
 
-        public String getCreatedAt() {
-            return createdAt;
-        }
+        public String getPhoneNumber() { return phoneNumber; }
+        public void setPhoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; }
 
-        public void setCreatedAt(String createdAt) {
-            this.createdAt = createdAt;
-        }
+        public String getProfilePicture() { return profilePicture; }
+        public void setProfilePicture(String profilePicture) { this.profilePicture = profilePicture; }
+
+        public boolean isAlreadyFriend() { return alreadyFriend; }
+        public void setAlreadyFriend(boolean alreadyFriend) { this.alreadyFriend = alreadyFriend; }
     }
 
     public static class ApiResponse {
@@ -180,29 +167,14 @@ public class UserDtos {
         public ApiResponse() {
         }
 
-        public boolean isSuccess() {
-            return success;
-        }
+        public boolean isSuccess() { return success; }
+        public void setSuccess(boolean success) { this.success = success; }
 
-        public void setSuccess(boolean success) {
-            this.success = success;
-        }
+        public String getMessage() { return message; }
+        public void setMessage(String message) { this.message = message; }
 
-        public String getMessage() {
-            return message;
-        }
-
-        public void setMessage(String message) {
-            this.message = message;
-        }
-
-        public Object getData() {
-            return data;
-        }
-
-        public void setData(Object data) {
-            this.data = data;
-        }
+        public Object getData() { return data; }
+        public void setData(Object data) { this.data = data; }
     }
 
     public static class ErrorResponse {
@@ -216,44 +188,19 @@ public class UserDtos {
         public ErrorResponse() {
         }
 
-        public int getStatus() {
-            return status;
-        }
+        public int getStatus() { return status; }
+        public void setStatus(int status) { this.status = status; }
 
-        public void setStatus(int status) {
-            this.status = status;
-        }
+        public String getError() { return error; }
+        public void setError(String error) { this.error = error; }
 
-        public String getError() {
-            return error;
-        }
+        public String getMessage() { return message; }
+        public void setMessage(String message) { this.message = message; }
 
-        public void setError(String error) {
-            this.error = error;
-        }
+        public String getPath() { return path; }
+        public void setPath(String path) { this.path = path; }
 
-        public String getMessage() {
-            return message;
-        }
-
-        public void setMessage(String message) {
-            this.message = message;
-        }
-
-        public String getPath() {
-            return path;
-        }
-
-        public void setPath(String path) {
-            this.path = path;
-        }
-
-        public String getTimestamp() {
-            return timestamp;
-        }
-
-        public void setTimestamp(String timestamp) {
-            this.timestamp = timestamp;
-        }
+        public String getTimestamp() { return timestamp; }
+        public void setTimestamp(String timestamp) { this.timestamp = timestamp; }
     }
 }

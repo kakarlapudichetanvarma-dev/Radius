@@ -94,8 +94,7 @@ public class FriendController {
         return ResponseEntity.ok(response);
     }
 
-    // ── GET /friends/search ──────────────────────────────
-    // Returns all friends of the logged-in user only
+    // ── GET /friends/search ──────────────────────────────────────────────────
     @GetMapping("/search")
     public ResponseEntity<ApiResponse> listFriends(
             Authentication auth,
@@ -132,6 +131,56 @@ public class FriendController {
         response.setSuccess(true);
         response.setMessage("Pending requests fetched.");
         response.setData(requests);
+
+        return ResponseEntity.ok(response);
+    }
+
+    // ── GET /friends/search-by-phone ─────────────────────────────────────────
+    @GetMapping("/search-by-phone")
+    public ResponseEntity<ApiResponse> searchByPhone(
+            @RequestParam String phone,
+            Authentication auth,
+            @RequestHeader("Authorization") String token) {
+
+        UUID requesterId =
+                UUID.fromString((String) auth.getPrincipal());
+
+        UserSearchResult result =
+                friendService.searchByPhone(
+                        requesterId,
+                        phone,
+                        token
+                );
+
+        ApiResponse response = new ApiResponse();
+        response.setSuccess(true);
+        response.setMessage("User found.");
+        response.setData(result);
+
+        return ResponseEntity.ok(response);
+    }
+
+    // ── POST /friends/add-direct ─────────────────────────────────────────────
+    @PostMapping("/add-direct")
+    public ResponseEntity<ApiResponse> addDirectFriend(
+            @Valid @RequestBody FriendRequestDto body,
+            Authentication auth,
+            @RequestHeader("Authorization") String token) {
+
+        UUID requesterId =
+                UUID.fromString((String) auth.getPrincipal());
+
+        FriendSummaryResponse result =
+                friendService.addDirectFriend(
+                        requesterId,
+                        body.getPhoneNumber(),
+                        token
+                );
+
+        ApiResponse response = new ApiResponse();
+        response.setSuccess(true);
+        response.setMessage("Friend added successfully.");
+        response.setData(result);
 
         return ResponseEntity.ok(response);
     }
