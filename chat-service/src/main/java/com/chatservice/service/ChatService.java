@@ -21,7 +21,6 @@ public interface ChatService {
 
         List<MessageResponse> getChatMessages(UUID chatId, UUID requestingUserId);
 
-        // ADD THIS LINE ↓
         List<ChatSummaryResponse> getChatsForUserByUsername(String username);
 
         // ── Groups ────────────────────────────────────────────────────────────
@@ -38,10 +37,10 @@ public interface ChatService {
 
         List<GroupMemberResponse> getGroupMembers(UUID groupId);
 
-        // ── Update group info (req #21) ───────────────────────────────────────
+        // ── Update group info ─────────────────────────────────────────────────
         GroupInfo updateGroupInfo(UUID groupId, UUID adminId, UpdateGroupRequest request);
 
-        // ── Group events (req #22) ────────────────────────────────────────────
+        // ── Group events ──────────────────────────────────────────────────────
         List<GroupEventResponse> getGroupEvents(UUID groupId);
 
         // ── Message actions ───────────────────────────────────────────────────
@@ -58,13 +57,17 @@ public interface ChatService {
 
         List<MediaAttachmentResponse> getChatLinks(UUID chatId);
 
-        // ── Search (req #29) ──────────────────────────────────────────────────
+        // ── Search ────────────────────────────────────────────────────────────
         List<MessageResponse> searchChat(UUID chatId, String query, UUID requestingUserId);
 
-        List<MessageResponse> searchChatWithFilters(UUID chatId, UUID requestingUserId,
-                        String query, UUID senderId,
+        List<MessageResponse> searchChatWithFilters(
+                        UUID chatId,
+                        UUID requestingUserId,
+                        String query,
+                        UUID senderId,
                         String mediaType,
-                        Instant from, Instant to);
+                        Instant from,
+                        Instant to);
 
         // ── Archive ───────────────────────────────────────────────────────────
         void archiveChat(UUID chatId, UUID userId);
@@ -73,7 +76,7 @@ public interface ChatService {
 
         List<ChatSummaryResponse> getArchivedChats(UUID userId);
 
-        // ── Search in archived chats (req #25) ───────────────────────────────
+        // ── Search in archived chats ──────────────────────────────────────────
         List<MessageResponse> searchArchivedChats(UUID userId, String query);
 
         // ── Status ────────────────────────────────────────────────────────────
@@ -82,11 +85,14 @@ public interface ChatService {
         void markRead(UUID chatId, UUID userId);
 
         // ── Wallpaper ─────────────────────────────────────────────────────────
-        WallpaperResponse setWallpaper(UUID chatId, UUID userId, WallpaperRequest request);
+        WallpaperResponse setWallpaper(UUID chatId, WallpaperRequest request);
 
-        WallpaperResponse getWallpaper(UUID chatId, UUID userId);
+        WallpaperResponse getWallpaper(UUID chatId);
 
         // ── Contact sharing ───────────────────────────────────────────────────
-        MessageResponse sendContact(UUID senderId, String senderUsername,
-                        UUID chatId, ContactPayload contact);
+        MessageResponse sendContact(
+                        UUID senderId,
+                        String senderUsername,
+                        UUID chatId,
+                        ContactPayload contact);
 }

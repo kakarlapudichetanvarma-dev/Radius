@@ -998,41 +998,49 @@ public MessageResponse sendGroupMessage(
     // ─────────────────────────────────────────────────────────────────────────
     // Wallpaper
     // ─────────────────────────────────────────────────────────────────────────
-    @Override
-    @Transactional
-    public WallpaperResponse setWallpaper(UUID chatId, UUID userId, WallpaperRequest request) {
-        log.info("setWallpaper chatId={} userId={}", chatId, userId);
+   // ─────────────────────────────────────────────────────────────────────────
+// Wallpaper
+// ─────────────────────────────────────────────────────────────────────────
 
-        ChatSettings settings = chatSettingsRepository.findByChatIdAndUserId(chatId, userId)
-                .orElseGet(() -> {
-                    ChatSettings s = new ChatSettings();
-                    s.setChatId(chatId);
-                    s.setUserId(userId);
-                    return s;
-                });
+@Override
+@Transactional
+public WallpaperResponse setWallpaper(UUID chatId, WallpaperRequest request) {
 
-        settings.setWallpaperType(request.getWallpaperType());
-        settings.setWallpaperData(request.getWallpaperData());
-        settings.setWallpaperColor(request.getWallpaperColor());
-        settings = chatSettingsRepository.save(settings);
+    log.info("setWallpaper chatId={}", chatId);
 
-        return toWallpaperResponse(settings);
-    }
+    ChatSettings settings = chatSettingsRepository
+            .findByChatId(chatId)
+            .orElseGet(() -> {
+                ChatSettings s = new ChatSettings();
+                s.setChatId(chatId);
+                return s;
+            });
 
-    @Override
-    public WallpaperResponse getWallpaper(UUID chatId, UUID userId) {
-        return chatSettingsRepository.findByChatIdAndUserId(chatId, userId)
-                .map(this::toWallpaperResponse)
-                .orElseGet(() -> {
-                    WallpaperResponse r = new WallpaperResponse();
-                    r.setChatId(chatId.toString());
-                    r.setUserId(userId.toString());
-                    r.setWallpaperType("DEFAULT");
-                    return r;
-                });
-    }
+    settings.setWallpaperType(request.getWallpaperType());
+    settings.setWallpaperData(request.getWallpaperData());
+    settings.setWallpaperColor(request.getWallpaperColor());
 
-    // ─────────────────────────────────────────────────────────────────────────
+    settings = chatSettingsRepository.save(settings);
+
+    return toWallpaperResponse(settings);
+}
+
+@Override
+public WallpaperResponse getWallpaper(UUID chatId) {
+
+    return chatSettingsRepository
+            .findByChatId(chatId)
+            .map(this::toWallpaperResponse)
+            .orElseGet(() -> {
+
+                WallpaperResponse r = new WallpaperResponse();
+
+                r.setChatId(chatId.toString());
+                r.setWallpaperType("DEFAULT");
+
+                return r;
+            });
+}    // ─────────────────────────────────────────────────────────────────────────
     // Contact Sharing
     // ─────────────────────────────────────────────────────────────────────────
     @Override
@@ -1373,13 +1381,20 @@ public MessageResponse sendGroupMessage(
     }
 
     private WallpaperResponse toWallpaperResponse(ChatSettings s) {
-        WallpaperResponse r = new WallpaperResponse();
-        r.setChatId(s.getChatId().toString());
-        r.setUserId(s.getUserId().toString());
-        r.setWallpaperType(s.getWallpaperType());
-        r.setWallpaperData(s.getWallpaperData());
-        r.setWallpaperColor(s.getWallpaperColor());
-        r.setUpdatedAt(s.getUpdatedAt() != null ? s.getUpdatedAt().toString() : null);
-        return r;
-    }
+
+    WallpaperResponse r = new WallpaperResponse();
+
+    r.setChatId(s.getChatId().toString());
+    r.setWallpaperType(s.getWallpaperType());
+    r.setWallpaperData(s.getWallpaperData());
+    r.setWallpaperColor(s.getWallpaperColor());
+
+    r.setUpdatedAt(
+            s.getUpdatedAt() != null
+                    ? s.getUpdatedAt().toString()
+                    : null
+    );
+
+    return r;
+}
 }

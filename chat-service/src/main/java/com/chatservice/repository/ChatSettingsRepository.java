@@ -9,5 +9,7 @@ import java.util.UUID;
 
 @Repository
 public interface ChatSettingsRepository extends JpaRepository<ChatSettings, UUID> {
-    Optional<ChatSettings> findByChatIdAndUserId(UUID chatId, UUID userId);
+
+    Optional<ChatSettings> findByChatId(UUID chatId);
+
 }

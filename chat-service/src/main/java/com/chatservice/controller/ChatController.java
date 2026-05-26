@@ -319,24 +319,29 @@ public class ChatController {
     }
 
     // ── GET /chats/{chatId}/wallpaper (req #2) ────────────────────────────────
+    // ── GET /chats/{chatId}/wallpaper ────────────────────────────────
     @GetMapping("/chats/{chatId}/wallpaper")
     public ResponseEntity<ApiResponse> getWallpaper(
-            @PathVariable UUID chatId,
-            Authentication auth) {
-        UUID userId = uuid(auth);
-        log.info("GET /chats/{}/wallpaper userId={}", chatId, userId);
-        return ok("Wallpaper fetched.", chatService.getWallpaper(chatId, userId));
+            @PathVariable UUID chatId) {
+
+        log.info("GET /chats/{}/wallpaper", chatId);
+
+        return ok(
+                "Wallpaper fetched.",
+                chatService.getWallpaper(chatId));
     }
 
-    // ── PUT /chats/{chatId}/wallpaper (req #2) ────────────────────────────────
+    // ── PUT /chats/{chatId}/wallpaper ────────────────────────────────
     @PutMapping("/chats/{chatId}/wallpaper")
     public ResponseEntity<ApiResponse> setWallpaper(
             @PathVariable UUID chatId,
-            @Valid @RequestBody WallpaperRequest request,
-            Authentication auth) {
-        UUID userId = uuid(auth);
-        log.info("PUT /chats/{}/wallpaper userId={}", chatId, userId);
-        return ok("Wallpaper updated.", chatService.setWallpaper(chatId, userId, request));
+            @Valid @RequestBody WallpaperRequest request) {
+
+        log.info("PUT /chats/{}/wallpaper", chatId);
+
+        return ok(
+                "Wallpaper updated.",
+                chatService.setWallpaper(chatId, request));
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
