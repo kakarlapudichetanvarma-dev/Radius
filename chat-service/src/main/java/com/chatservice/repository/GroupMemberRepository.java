@@ -23,7 +23,7 @@ public interface GroupMemberRepository extends JpaRepository<GroupMember, UUID> 
 
     // All groups a user is a member of (active)
     List<GroupMember> findByUserIdAndLeftAtIsNull(UUID userId);
-
+List<GroupMember> findByGroupId(UUID groupId);
     // All members including those who left (for audit)
     List<GroupMember> findByUserId(UUID userId);
 }

@@ -1,8 +1,10 @@
 package com.chatservice.repository;
 
+import com.chatservice.entity.GroupMember;
 import com.chatservice.entity.Message;
 import com.chatservice.entity.Message.MessageStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -106,6 +108,9 @@ public interface MessageRepository extends JpaRepository<Message, UUID> {
     // Load messages by IDs (used after bulk visibility filter)
     @Query("SELECT m FROM Message m WHERE m.id IN :ids ORDER BY m.sentAt ASC")
     List<Message> findByIds(@Param("ids") List<UUID> ids);
+    @Modifying
+@Query("DELETE FROM Message m WHERE m.chatId = :chatId")
+void deleteByChatId(@Param("chatId") UUID chatId);
 
     List<Message> findByChatIdAndSenderId(UUID chatId, UUID senderId);
 }

@@ -27,13 +27,10 @@ public class Group {
     @Column(name = "creator_id", nullable = false)
     private UUID creatorId;
 
-    @Column(name = "profile_picture", columnDefinition = "TEXT")
-    private String profilePicture;
+    // ✅ Fixed: byte[] to store image as binary, same as User.profilePicture
+    @Column(name = "profile_picture", columnDefinition = "bytea")
+    private byte[] profilePicture;
 
-    // NOTE: memberCount is always updated explicitly in service layer
-    // whenever addMember / removeMember is called to keep it in sync.
-    // Never read this field and trust it without syncing — always update it
-    // atomically with the group_members insert/delete.
     @Column(name = "member_count", nullable = false)
     private int memberCount = 0;
 
@@ -58,8 +55,11 @@ public class Group {
     public void setDescription(String description) { this.description = description; }
     public UUID getCreatorId() { return creatorId; }
     public void setCreatorId(UUID creatorId) { this.creatorId = creatorId; }
-    public String getProfilePicture() { return profilePicture; }
-    public void setProfilePicture(String profilePicture) { this.profilePicture = profilePicture; }
+
+    // ✅ Fixed: getter and setter now use byte[]
+    public byte[] getProfilePicture() { return profilePicture; }
+    public void setProfilePicture(byte[] profilePicture) { this.profilePicture = profilePicture; }
+
     public int getMemberCount() { return memberCount; }
     public void setMemberCount(int memberCount) { this.memberCount = memberCount; }
     public Instant getCreatedAt() { return createdAt; }

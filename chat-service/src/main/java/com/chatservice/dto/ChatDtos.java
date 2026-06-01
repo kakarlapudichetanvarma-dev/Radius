@@ -178,7 +178,13 @@ public class ChatDtos {
         public String getProfilePicture() { return profilePicture; }
         public void setProfilePicture(String v) { this.profilePicture = v; }
     }
+// ── Update Group Photo Request ────────────────────────────────────────────
+public static class UpdateGroupPhotoRequest {
+    private String profilePicture;
 
+    public String getProfilePicture() { return profilePicture; }
+    public void setProfilePicture(String v) { this.profilePicture = v; }
+}
     // ── Edit Message Request ──────────────────────────────────────────────
     public static class EditMessageRequest {
         @NotBlank(message = "content is required")

@@ -88,196 +88,65 @@ public class ChatServiceImpl implements ChatService {
         this.userServiceClient = userServiceClient;
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Send Private Message
-    // ─────────────────────────────────────────────────────────────────────────
-@Override
-@Transactional
-public MessageResponse sendPrivateMessage(
-        UUID senderId,
-        String senderUsername,
-        SendPrivateMessageRequest request
-) {
+    @Override
+    @Transactional
+    public MessageResponse sendPrivateMessage(
+            UUID senderId,
+            String senderUsername,
+            SendPrivateMessageRequest request) {
 
-    UUID receiverId =
-            userServiceClient.getUserIdByUsername(
-                    request.getReceiverUsername()
-            );
+        UUID receiverId = userServiceClient.getUserIdByUsername(request.getReceiverUsername());
 
-    log.info(
-            "sendPrivateMessage sender={} receiver={}",
-            senderId,
-            receiverId
-    );
+        log.info("sendPrivateMessage sender={} receiver={}", senderId, receiverId);
 
-    UUID chatId =
-            findOrCreatePrivateChat(
-                    senderId,
-                    senderUsername,
-                    receiverId,
-                    request.getReceiverUsername()
-            );
+        UUID chatId = findOrCreatePrivateChat(senderId, senderUsername, receiverId, request.getReceiverUsername());
 
-    // CONTACT
-    if (
-            "CONTACT".equalsIgnoreCase(
-                    request.getMessageType()
-            ) &&
-            request.getContact() != null
-    ) {
+        if ("CONTACT".equalsIgnoreCase(request.getMessageType()) && request.getContact() != null) {
+            return sendContact(senderId, senderUsername, chatId, request.getContact());
+        }
 
-        return sendContact(
-                senderId,
-                senderUsername,
-                chatId,
-                request.getContact()
-        );
+        Message message = buildMessage(chatId, senderId, senderUsername,
+                request.getContent(), request.getMessageType(), request.getReplyToId());
+
+        if ("STICKER".equalsIgnoreCase(request.getMessageType()) && request.getStickerUrl() != null) {
+            message.setContent(request.getStickerUrl());
+        }
+
+        message = messageRepository.save(message);
+
+        MediaAttachment attachment = null;
+        if (hasAttachment(request.getMessageType())) {
+            attachment = saveAttachment(message.getId(), chatId, request.getMessageType(),
+                    request.getFileData(), request.getFileName(), request.getFileType(),
+                    request.getFileSizeBytes(), request.getUrl(), request.getPreviewTitle(),
+                    request.getPreviewDesc(), request.getStickerId());
+        }
+
+        indexMessage(message, attachment);
+        cacheService.evictChatMessages(chatId.toString());
+        kafkaProducer.publishMessageSent(chatId.toString(), message.getId().toString(), senderId.toString());
+
+        message.setStatus(MessageStatus.DELIVERED);
+        message.setDeliveredAt(Instant.now());
+        message = messageRepository.save(message);
+
+        MessageResponse response = toMessageResponse(message, attachment);
+        WsMessage wsMessage = buildWsMessage(response);
+
+        messagingTemplate.convertAndSend("/topic/chat/" + chatId, wsMessage);
+        messagingTemplate.convertAndSendToUser(receiverId.toString(), "/queue/messages", wsMessage);
+
+        Map<String, Object> ws = new HashMap<>();
+        ws.put("type", "STATUS_UPDATE");
+        ws.put("messageId", message.getId().toString());
+        ws.put("status", "DELIVERED");
+        ws.put("chatId", chatId.toString());
+        messagingTemplate.convertAndSendToUser(receiverId.toString(), "/queue/messages", ws);
+
+        log.info("Private realtime message {} sent in chat {}", message.getId(), chatId);
+        return response;
     }
 
-    Message message =
-            buildMessage(
-                    chatId,
-                    senderId,
-                    senderUsername,
-                    request.getContent(),
-                    request.getMessageType(),
-                    request.getReplyToId()
-            );
-
-    // STICKER
-    if (
-            "STICKER".equalsIgnoreCase(
-                    request.getMessageType()
-            ) &&
-            request.getStickerUrl() != null
-    ) {
-
-        message.setContent(
-                request.getStickerUrl()
-        );
-    }
-
-    message =
-            messageRepository.save(
-                    message
-            );
-
-    MediaAttachment attachment = null;
-
-    if (
-            hasAttachment(
-                    request.getMessageType()
-            )
-    ) {
-
-        attachment =
-                saveAttachment(
-                        message.getId(),
-                        chatId,
-                        request.getMessageType(),
-                        request.getFileData(),
-                        request.getFileName(),
-                        request.getFileType(),
-                        request.getFileSizeBytes(),
-                        request.getUrl(),
-                        request.getPreviewTitle(),
-                        request.getPreviewDesc(),
-                        request.getStickerId()
-                );
-    }
-
-    indexMessage(
-            message,
-            attachment
-    );
-
-    cacheService.evictChatMessages(
-            chatId.toString()
-    );
-
-    kafkaProducer.publishMessageSent(
-            chatId.toString(),
-            message.getId().toString(),
-            senderId.toString()
-    );
-
-    // ✅ FORCE DELIVERED INSTANTLY
-    message.setStatus(
-            MessageStatus.DELIVERED
-    );
-
-    message.setDeliveredAt(
-            Instant.now()
-    );
-
-    message =
-            messageRepository.save(
-                    message
-            );
-
-    MessageResponse response =
-            toMessageResponse(
-                    message,
-                    attachment
-            );
-
-    // ✅ SEND REALTIME MESSAGE
-   WsMessage wsMessage = buildWsMessage(response);
-
-// ✅ Current open chat realtime
-messagingTemplate.convertAndSend(
-        "/topic/chat/" + chatId,
-        wsMessage
-);
-
-// ✅ Receiver personal inbox realtime
-messagingTemplate.convertAndSendToUser(
-        receiverId.toString(),
-        "/queue/messages",
-        wsMessage
-);
-
-    // ✅ SEND REALTIME TICK UPDATE
-    Map<String, Object> ws =
-            new HashMap<>();
-
-    ws.put(
-            "type",
-            "STATUS_UPDATE"
-    );
-
-    ws.put(
-            "messageId",
-            message.getId().toString()
-    );
-
-    ws.put(
-            "status",
-            "DELIVERED"
-    );
-
-    ws.put(
-            "chatId",
-            chatId.toString()
-    );
-
-   messagingTemplate.convertAndSendToUser(
-        receiverId.toString(),
-        "/queue/messages",
-        ws
-);
-
-    log.info(
-            "Private realtime message {} sent in chat {}",
-            message.getId(),
-            chatId
-    );
-
-    return response;
-}
-    // ─────────────────────────────────────────────────────────────────────────
-    // Get Chats for User by Username
-    // ─────────────────────────────────────────────────────────────────────────
     @Override
     public List<ChatSummaryResponse> getChatsForUserByUsername(String username) {
         log.info("getChatsForUserByUsername username={}", username);
@@ -285,192 +154,64 @@ messagingTemplate.convertAndSendToUser(
         return getChatsForUser(userId);
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Send Group Message
-    // ─────────────────────────────────────────────────────────────────────────
-@Override
-@Transactional
-public MessageResponse sendGroupMessage(
-        UUID senderId,
-        String senderUsername,
-        SendGroupMessageRequest request
-) {
+    @Override
+    @Transactional
+    public MessageResponse sendGroupMessage(
+            UUID senderId,
+            String senderUsername,
+            SendGroupMessageRequest request) {
 
-    UUID chatId =
-            UUID.fromString(
-                    request.getChatId()
-            );
+        UUID chatId = UUID.fromString(request.getChatId());
 
-    if (
-            !participantRepository
-                    .existsByChatIdAndUserId(
-                            chatId,
-                            senderId
-                    )
-    ) {
+        if (!participantRepository.existsByChatIdAndUserId(chatId, senderId)) {
+            throw new NotChatMemberException("You are not a member of this group.");
+        }
 
-        throw new NotChatMemberException(
-                "You are not a member of this group."
-        );
+        log.info("sendGroupMessage sender={} chatId={}", senderId, chatId);
+
+        if ("CONTACT".equalsIgnoreCase(request.getMessageType()) && request.getContact() != null) {
+            return sendContact(senderId, senderUsername, chatId, request.getContact());
+        }
+
+        Message message = buildMessage(chatId, senderId, senderUsername,
+                request.getContent(), request.getMessageType(), request.getReplyToId());
+
+        if ("STICKER".equalsIgnoreCase(request.getMessageType()) && request.getStickerUrl() != null) {
+            message.setContent(request.getStickerUrl());
+        }
+
+        message = messageRepository.save(message);
+
+        MediaAttachment attachment = null;
+        if (hasAttachment(request.getMessageType())) {
+            attachment = saveAttachment(message.getId(), chatId, request.getMessageType(),
+                    request.getFileData(), request.getFileName(), request.getFileType(),
+                    request.getFileSizeBytes(), request.getUrl(), request.getPreviewTitle(),
+                    request.getPreviewDesc(), request.getStickerId());
+        }
+
+        indexMessage(message, attachment);
+        cacheService.evictChatMessages(chatId.toString());
+        kafkaProducer.publishMessageSent(chatId.toString(), message.getId().toString(), senderId.toString());
+
+        message.setStatus(MessageStatus.DELIVERED);
+        message.setDeliveredAt(Instant.now());
+        message = messageRepository.save(message);
+
+        MessageResponse response = toMessageResponse(message, attachment);
+        messagingTemplate.convertAndSend("/topic/chat/" + chatId, buildWsMessage(response));
+
+        Map<String, Object> ws = new HashMap<>();
+        ws.put("type", "STATUS_UPDATE");
+        ws.put("messageId", message.getId().toString());
+        ws.put("status", "DELIVERED");
+        ws.put("chatId", chatId.toString());
+        messagingTemplate.convertAndSend("/topic/chat/" + chatId, ws);
+
+        log.info("Group realtime message {} sent in chat {}", message.getId(), chatId);
+        return response;
     }
 
-    log.info(
-            "sendGroupMessage sender={} chatId={}",
-            senderId,
-            chatId
-    );
-
-    // CONTACT
-    if (
-            "CONTACT".equalsIgnoreCase(
-                    request.getMessageType()
-            ) &&
-            request.getContact() != null
-    ) {
-
-        return sendContact(
-                senderId,
-                senderUsername,
-                chatId,
-                request.getContact()
-        );
-    }
-
-    Message message =
-            buildMessage(
-                    chatId,
-                    senderId,
-                    senderUsername,
-                    request.getContent(),
-                    request.getMessageType(),
-                    request.getReplyToId()
-            );
-
-    // STICKER
-    if (
-            "STICKER".equalsIgnoreCase(
-                    request.getMessageType()
-            ) &&
-            request.getStickerUrl() != null
-    ) {
-
-        message.setContent(
-                request.getStickerUrl()
-        );
-    }
-
-    message =
-            messageRepository.save(
-                    message
-            );
-
-    MediaAttachment attachment = null;
-
-    if (
-            hasAttachment(
-                    request.getMessageType()
-            )
-    ) {
-
-        attachment =
-                saveAttachment(
-                        message.getId(),
-                        chatId,
-                        request.getMessageType(),
-                        request.getFileData(),
-                        request.getFileName(),
-                        request.getFileType(),
-                        request.getFileSizeBytes(),
-                        request.getUrl(),
-                        request.getPreviewTitle(),
-                        request.getPreviewDesc(),
-                        request.getStickerId()
-                );
-    }
-
-    indexMessage(
-            message,
-            attachment
-    );
-
-    cacheService.evictChatMessages(
-            chatId.toString()
-    );
-
-    kafkaProducer.publishMessageSent(
-            chatId.toString(),
-            message.getId().toString(),
-            senderId.toString()
-    );
-
-    // ✅ FORCE DELIVERED
-    message.setStatus(
-            MessageStatus.DELIVERED
-    );
-
-    message.setDeliveredAt(
-            Instant.now()
-    );
-
-    message =
-            messageRepository.save(
-                    message
-            );
-
-    MessageResponse response =
-            toMessageResponse(
-                    message,
-                    attachment
-            );
-
-    // ✅ SEND REALTIME MESSAGE
-    messagingTemplate.convertAndSend(
-            "/topic/chat/" + chatId,
-            buildWsMessage(response)
-    );
-
-    // ✅ SEND REALTIME STATUS UPDATE
-    Map<String, Object> ws =
-            new HashMap<>();
-
-    ws.put(
-            "type",
-            "STATUS_UPDATE"
-    );
-
-    ws.put(
-            "messageId",
-            message.getId().toString()
-    );
-
-    ws.put(
-            "status",
-            "DELIVERED"
-    );
-
-    ws.put(
-            "chatId",
-            chatId.toString()
-    );
-
-    messagingTemplate.convertAndSend(
-            "/topic/chat/" + chatId,
-            ws
-    );
-
-    log.info(
-            "Group realtime message {} sent in chat {}",
-            message.getId(),
-            chatId
-    );
-
-    return response;
-}
-
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Get Chats for User
-    // ─────────────────────────────────────────────────────────────────────────
     @Override
     public List<ChatSummaryResponse> getChatsForUser(UUID userId) {
         log.info("getChatsForUser userId={}", userId);
@@ -485,40 +226,28 @@ public MessageResponse sendGroupMessage(
                 .collect(Collectors.toList());
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Get Chat Messages — FIX: no N+1, uses bulk attachment load
-    // ─────────────────────────────────────────────────────────────────────────
     @Override
     public List<MessageResponse> getChatMessages(UUID chatId, UUID requestingUserId) {
         log.info("getChatMessages chatId={} userId={}", chatId, requestingUserId);
 
-        // Use per-user filtered query — replaces old findByChatIdOrdered +
-        // filterDeletedForMe
         List<Message> messages = messageRepository.findByChatIdOrderedForUser(chatId, requestingUserId);
 
-        if (messages.isEmpty())
-            return Collections.emptyList();
+        if (messages.isEmpty()) return Collections.emptyList();
 
-        // Batch load all attachments — avoids N+1 DB calls per message
         List<UUID> messageIds = messages.stream().map(Message::getId).collect(Collectors.toList());
         Map<UUID, MediaAttachment> attachmentMap = mediaRepository
                 .findByMessageIds(messageIds)
                 .stream()
-                .collect(Collectors.toMap(MediaAttachment::getMessageId, a -> a,
-                        (a1, a2) -> a1)); // keep first if multiple
+                .collect(Collectors.toMap(MediaAttachment::getMessageId, a -> a, (a1, a2) -> a1));
 
         return messages.stream()
                 .map(m -> toMessageResponse(m, attachmentMap.get(m.getId())))
                 .collect(Collectors.toList());
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Create Group
-    // ─────────────────────────────────────────────────────────────────────────
     @Override
     @Transactional
-    public GroupInfo createGroup(UUID creatorId, String creatorUsername,
-            CreateGroupRequest request) {
+    public GroupInfo createGroup(UUID creatorId, String creatorUsername, CreateGroupRequest request) {
         log.info("createGroup creator={} name={}", creatorId, request.getName());
 
         Chat chat = new Chat();
@@ -531,7 +260,6 @@ public MessageResponse sendGroupMessage(
         group.setName(request.getName());
         group.setDescription(request.getDescription());
         group.setCreatorId(creatorId);
-        group.setProfilePicture(request.getProfilePicture());
         group.setMemberCount(1);
         group = groupRepository.save(group);
         final UUID groupId = group.getId();
@@ -543,8 +271,9 @@ public MessageResponse sendGroupMessage(
             for (String memberId : request.getMemberIds()) {
                 UUID memberUuid = UUID.fromString(memberId);
                 if (!memberUuid.equals(creatorId)) {
-                    addParticipant(chatId, memberUuid, null);
-                    addGroupMember(groupId, memberUuid, null, Role.MEMBER);
+                    String memberUsername = userServiceClient.getUsernameById(memberUuid);
+                    addParticipant(chatId, memberUuid, memberUsername);
+                    addGroupMember(groupId, memberUuid, memberUsername, Role.MEMBER);
                     group.setMemberCount(group.getMemberCount() + 1);
                 }
             }
@@ -558,9 +287,6 @@ public MessageResponse sendGroupMessage(
         return toGroupInfo(group);
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Update Group Info (req #21)
-    // ─────────────────────────────────────────────────────────────────────────
     @Override
     @Transactional
     public GroupInfo updateGroupInfo(UUID groupId, UUID adminId, UpdateGroupRequest request) {
@@ -575,33 +301,20 @@ public MessageResponse sendGroupMessage(
         if (request.getDescription() != null) {
             group.setDescription(request.getDescription());
         }
-        if (request.getProfilePicture() != null) {
-            group.setProfilePicture(request.getProfilePicture());
-        }
 
         group = groupRepository.save(group);
-
-        recordGroupEvent(groupId, "GROUP_UPDATED", adminId, null,
-                "Group info updated by admin");
+        recordGroupEvent(groupId, "GROUP_UPDATED", adminId, null, "Group info updated by admin");
 
         log.info("Group {} info updated by admin {}", groupId, adminId);
         return toGroupInfo(group);
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Get Group Events (req #22)
-    // ─────────────────────────────────────────────────────────────────────────
     @Override
     public List<GroupEventResponse> getGroupEvents(UUID groupId) {
         return groupEventRepository.findByGroupIdOrderByOccurredAtAsc(groupId)
-                .stream()
-                .map(this::toGroupEventResponse)
-                .collect(Collectors.toList());
+                .stream().map(this::toGroupEventResponse).collect(Collectors.toList());
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Get Groups for User
-    // ─────────────────────────────────────────────────────────────────────────
     @Override
     public List<GroupInfo> getGroupsForUser(UUID userId) {
         return groupMemberRepository.findByUserIdAndLeftAtIsNull(userId).stream()
@@ -611,9 +324,6 @@ public MessageResponse sendGroupMessage(
                 .collect(Collectors.toList());
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Add Member
-    // ─────────────────────────────────────────────────────────────────────────
     @Override
     @Transactional
     public void addMember(UUID groupId, UUID adminId, UUID newMemberId, String newMemberUsername) {
@@ -629,14 +339,12 @@ public MessageResponse sendGroupMessage(
         addParticipant(group.getChatId(), newMemberId, newMemberUsername);
         addGroupMember(groupId, newMemberId, newMemberUsername, Role.MEMBER);
 
-        // Sync memberCount atomically
         group.setMemberCount(group.getMemberCount() + 1);
         groupRepository.save(group);
 
         recordGroupEvent(groupId, "MEMBER_JOINED", adminId, newMemberId, "Member added by admin");
         sendGroupEventMessage(group.getChatId(), groupId, adminId,
-                (newMemberUsername != null ? newMemberUsername : newMemberId.toString())
-                        + " was added to the group");
+                (newMemberUsername != null ? newMemberUsername : newMemberId.toString()) + " was added to the group");
 
         kafkaProducer.publishGroupEvent(groupId.toString(), "MEMBER_JOINED",
                 adminId.toString(), newMemberId.toString());
@@ -644,9 +352,6 @@ public MessageResponse sendGroupMessage(
         log.info("Member {} added to group {} by admin {}", newMemberId, groupId, adminId);
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Remove Member
-    // ─────────────────────────────────────────────────────────────────────────
     @Override
     @Transactional
     public void removeMember(UUID groupId, UUID adminId, UUID targetUserId) {
@@ -661,7 +366,6 @@ public MessageResponse sendGroupMessage(
         member.setLeftAt(Instant.now());
         groupMemberRepository.save(member);
 
-        // Sync memberCount atomically
         group.setMemberCount(Math.max(0, group.getMemberCount() - 1));
         groupRepository.save(group);
 
@@ -674,9 +378,6 @@ public MessageResponse sendGroupMessage(
         log.info("Member {} removed from group {} by admin {}", targetUserId, groupId, adminId);
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Promote Admin
-    // ─────────────────────────────────────────────────────────────────────────
     @Override
     @Transactional
     public void promoteAdmin(UUID groupId, UUID adminId, UUID targetUserId) {
@@ -689,15 +390,12 @@ public MessageResponse sendGroupMessage(
         groupMemberRepository.save(member);
 
         recordGroupEvent(groupId, "ADMIN_CHANGED", adminId, targetUserId, "User promoted to admin");
-        groupRepository.findById(groupId).ifPresent(group -> sendGroupEventMessage(group.getChatId(), groupId, adminId,
-                "A member was promoted to admin"));
+        groupRepository.findById(groupId).ifPresent(group ->
+                sendGroupEventMessage(group.getChatId(), groupId, adminId, "A member was promoted to admin"));
 
         log.info("User {} promoted to admin in group {} by {}", targetUserId, groupId, adminId);
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Get Group Members
-    // ─────────────────────────────────────────────────────────────────────────
     @Override
     public List<GroupMemberResponse> getGroupMembers(UUID groupId) {
         return groupMemberRepository.findByGroupIdAndLeftAtIsNull(groupId).stream()
@@ -705,9 +403,6 @@ public MessageResponse sendGroupMessage(
                 .collect(Collectors.toList());
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Edit Message
-    // ─────────────────────────────────────────────────────────────────────────
     @Override
     @Transactional
     public MessageResponse editMessage(UUID messageId, UUID editorId, EditMessageRequest request) {
@@ -744,17 +439,13 @@ public MessageResponse sendGroupMessage(
         return response;
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Delete For Me
-    // ─────────────────────────────────────────────────────────────────────────
     @Override
     @Transactional
     public void deleteForMe(UUID messageId, UUID userId) {
         if (!messageRepository.existsById(messageId)) {
             throw new MessageNotFoundException("Message not found.");
         }
-        if (visibilityRepository.existsByMessageIdAndUserId(messageId, userId))
-            return;
+        if (visibilityRepository.existsByMessageIdAndUserId(messageId, userId)) return;
 
         MessageVisibility vis = new MessageVisibility();
         vis.setMessageId(messageId);
@@ -764,9 +455,6 @@ public MessageResponse sendGroupMessage(
         log.info("Message {} hidden for user {} (Delete for Me)", messageId, userId);
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Delete For Everyone
-    // ─────────────────────────────────────────────────────────────────────────
     @Override
     @Transactional
     public void deleteForEveryone(UUID messageId, UUID requesterId) {
@@ -774,8 +462,7 @@ public MessageResponse sendGroupMessage(
                 .orElseThrow(() -> new MessageNotFoundException("Message not found."));
 
         if (!message.getSenderId().equals(requesterId)) {
-            throw new UnauthorizedMessageActionException(
-                    "You can only delete your own messages for everyone.");
+            throw new UnauthorizedMessageActionException("You can only delete your own messages for everyone.");
         }
 
         message.setDeleted(true);
@@ -794,9 +481,6 @@ public MessageResponse sendGroupMessage(
         log.info("Message {} deleted for everyone by {}", messageId, requesterId);
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Media retrieval
-    // ─────────────────────────────────────────────────────────────────────────
     @Override
     public List<MediaAttachmentResponse> getChatImages(UUID chatId) {
         return mediaRepository.findByChatIdAndMediaTypeOrderByUploadedAtDesc(chatId, MediaType.IMAGE)
@@ -815,9 +499,6 @@ public MessageResponse sendGroupMessage(
                 .stream().map(this::toMediaResponse).collect(Collectors.toList());
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Search (req #29) — basic text search
-    // ─────────────────────────────────────────────────────────────────────────
     @Override
     public List<MessageResponse> searchChat(UUID chatId, String query, UUID requestingUserId) {
         log.info("searchChat chatId={} query={}", chatId, query);
@@ -834,14 +515,9 @@ public MessageResponse sendGroupMessage(
                 .collect(Collectors.toList());
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Search with filters (req #29) — by sender, date, mediaType
-    // ─────────────────────────────────────────────────────────────────────────
     @Override
     public List<MessageResponse> searchChatWithFilters(UUID chatId, UUID requestingUserId,
-            String query, UUID senderId,
-            String mediaType,
-            Instant from, Instant to) {
+            String query, UUID senderId, String mediaType, Instant from, Instant to) {
         log.info("searchChatWithFilters chatId={} query={} senderId={} mediaType={}",
                 chatId, query, senderId, mediaType);
 
@@ -858,14 +534,10 @@ public MessageResponse sendGroupMessage(
                 .collect(Collectors.toList());
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Archive
-    // ─────────────────────────────────────────────────────────────────────────
     @Override
     @Transactional
     public void archiveChat(UUID chatId, UUID userId) {
-        if (archivedChatRepository.existsByChatIdAndUserId(chatId, userId))
-            return;
+        if (archivedChatRepository.existsByChatIdAndUserId(chatId, userId)) return;
 
         ArchivedChat arc = new ArchivedChat();
         arc.setChatId(chatId);
@@ -891,9 +563,6 @@ public MessageResponse sendGroupMessage(
                 .collect(Collectors.toList());
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Search in Archived Chats (req #25)
-    // ─────────────────────────────────────────────────────────────────────────
     @Override
     public List<MessageResponse> searchArchivedChats(UUID userId, String query) {
         log.info("searchArchivedChats userId={} query={}", userId, query);
@@ -901,8 +570,7 @@ public MessageResponse sendGroupMessage(
         List<UUID> archivedChatIds = archivedChatRepository.findByUserId(userId)
                 .stream().map(ArchivedChat::getChatId).collect(Collectors.toList());
 
-        if (archivedChatIds.isEmpty())
-            return Collections.emptyList();
+        if (archivedChatIds.isEmpty()) return Collections.emptyList();
 
         Set<UUID> hiddenIds = visibilityRepository.findHiddenMessageIdsByUserId(userId);
 
@@ -916,43 +584,25 @@ public MessageResponse sendGroupMessage(
                 .collect(Collectors.toList());
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Status
-    // ─────────────────────────────────────────────────────────────────────────
     @Override
     @Transactional
     public void markDelivered(UUID chatId, UUID userId) {
         List<Message> unread = messageRepository.findUnreadMessages(chatId, MessageStatus.SENT, userId);
         Instant now = Instant.now();
         for (Message m : unread) {
+            m.setStatus(MessageStatus.DELIVERED);
+            m.setDeliveredAt(now);
+            messageRepository.save(m);
 
-    m.setStatus(MessageStatus.DELIVERED);
+            Map<String, Object> ws = new HashMap<>();
+            ws.put("type", "STATUS_UPDATE");
+            ws.put("messageId", m.getId().toString());
+            ws.put("status", "DELIVERED");
+            ws.put("chatId", chatId.toString());
+            messagingTemplate.convertAndSend("/topic/chat/" + chatId, ws);
 
-    m.setDeliveredAt(now);
-
-    messageRepository.save(m);
-
-    // ✅ REALTIME WS STATUS UPDATE
-    Map<String, Object> ws = new HashMap<>();
-
-    ws.put("type", "STATUS_UPDATE");
-
-    ws.put("messageId", m.getId().toString());
-
-    ws.put("status", "DELIVERED");
-
-    ws.put("chatId", chatId.toString());
-
-    messagingTemplate.convertAndSend(
-        "/topic/chat/" + chatId,
-        ws
-    );
-
-    kafkaProducer.publishMessageDelivered(
-        chatId.toString(),
-        m.getId().toString()
-    );
-}
+            kafkaProducer.publishMessageDelivered(chatId.toString(), m.getId().toString());
+        }
         log.info("Marked {} messages DELIVERED in chat {} for user {}", unread.size(), chatId, userId);
     }
 
@@ -961,88 +611,56 @@ public MessageResponse sendGroupMessage(
     public void markRead(UUID chatId, UUID userId) {
         List<Message> messages = messageRepository.findUnreadMessages(chatId, MessageStatus.DELIVERED, userId);
         Instant now = Instant.now();
-       for (Message m : messages) {
+        for (Message m : messages) {
+            m.setStatus(MessageStatus.READ);
+            m.setReadAt(now);
+            messageRepository.save(m);
 
-    m.setStatus(MessageStatus.READ);
+            Map<String, Object> ws = new HashMap<>();
+            ws.put("type", "STATUS_UPDATE");
+            ws.put("messageId", m.getId().toString());
+            ws.put("status", "READ");
+            ws.put("chatId", chatId.toString());
+            messagingTemplate.convertAndSend("/topic/chat/" + chatId, ws);
 
-    m.setReadAt(now);
-
-    messageRepository.save(m);
-
-    // ✅ REALTIME WS STATUS UPDATE
-    Map<String, Object> ws = new HashMap<>();
-
-    ws.put("type", "STATUS_UPDATE");
-
-    ws.put("messageId", m.getId().toString());
-
-    ws.put("status", "READ");
-
-    ws.put("chatId", chatId.toString());
-
-    messagingTemplate.convertAndSend(
-        "/topic/chat/" + chatId,
-        ws
-    );
-
-    kafkaProducer.publishMessageRead(
-        chatId.toString(),
-        m.getId().toString(),
-        userId.toString()
-    );
-}
+            kafkaProducer.publishMessageRead(chatId.toString(), m.getId().toString(), userId.toString());
+        }
         cacheService.evictChatMessages(chatId.toString());
         log.info("Marked {} messages READ in chat {} for user {}", messages.size(), chatId, userId);
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Wallpaper
-    // ─────────────────────────────────────────────────────────────────────────
-   // ─────────────────────────────────────────────────────────────────────────
-// Wallpaper
-// ─────────────────────────────────────────────────────────────────────────
+    @Override
+    @Transactional
+    public WallpaperResponse setWallpaper(UUID chatId, WallpaperRequest request) {
+        log.info("setWallpaper chatId={}", chatId);
 
-@Override
-@Transactional
-public WallpaperResponse setWallpaper(UUID chatId, WallpaperRequest request) {
+        ChatSettings settings = chatSettingsRepository.findByChatId(chatId)
+                .orElseGet(() -> {
+                    ChatSettings s = new ChatSettings();
+                    s.setChatId(chatId);
+                    return s;
+                });
 
-    log.info("setWallpaper chatId={}", chatId);
+        settings.setWallpaperType(request.getWallpaperType());
+        settings.setWallpaperData(request.getWallpaperData());
+        settings.setWallpaperColor(request.getWallpaperColor());
+        settings = chatSettingsRepository.save(settings);
 
-    ChatSettings settings = chatSettingsRepository
-            .findByChatId(chatId)
-            .orElseGet(() -> {
-                ChatSettings s = new ChatSettings();
-                s.setChatId(chatId);
-                return s;
-            });
+        return toWallpaperResponse(settings);
+    }
 
-    settings.setWallpaperType(request.getWallpaperType());
-    settings.setWallpaperData(request.getWallpaperData());
-    settings.setWallpaperColor(request.getWallpaperColor());
+    @Override
+    public WallpaperResponse getWallpaper(UUID chatId) {
+        return chatSettingsRepository.findByChatId(chatId)
+                .map(this::toWallpaperResponse)
+                .orElseGet(() -> {
+                    WallpaperResponse r = new WallpaperResponse();
+                    r.setChatId(chatId.toString());
+                    r.setWallpaperType("DEFAULT");
+                    return r;
+                });
+    }
 
-    settings = chatSettingsRepository.save(settings);
-
-    return toWallpaperResponse(settings);
-}
-
-@Override
-public WallpaperResponse getWallpaper(UUID chatId) {
-
-    return chatSettingsRepository
-            .findByChatId(chatId)
-            .map(this::toWallpaperResponse)
-            .orElseGet(() -> {
-
-                WallpaperResponse r = new WallpaperResponse();
-
-                r.setChatId(chatId.toString());
-                r.setWallpaperType("DEFAULT");
-
-                return r;
-            });
-}    // ─────────────────────────────────────────────────────────────────────────
-    // Contact Sharing
-    // ─────────────────────────────────────────────────────────────────────────
     @Override
     @Transactional
     public MessageResponse sendContact(UUID senderId, String senderUsername,
@@ -1079,8 +697,7 @@ public WallpaperResponse getWallpaper(UUID chatId) {
 
         indexMessage(message, att);
         cacheService.evictChatMessages(chatId.toString());
-        kafkaProducer.publishMessageSent(chatId.toString(), message.getId().toString(),
-                senderId.toString());
+        kafkaProducer.publishMessageSent(chatId.toString(), message.getId().toString(), senderId.toString());
 
         MessageResponse response = toMessageResponse(message, att);
         messagingTemplate.convertAndSend("/topic/chat/" + chatId, buildWsMessage(response));
@@ -1088,15 +705,152 @@ public WallpaperResponse getWallpaper(UUID chatId) {
         return response;
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Private helpers
-    // ─────────────────────────────────────────────────────────────────────────
+    @Override
+    @Transactional
+    public void clearChatForMe(UUID chatId, UUID userId) {
+        List<Message> messages = messageRepository.findByChatIdOrderedForUser(chatId, userId);
+        for (Message m : messages) {
+            if (!visibilityRepository.existsByMessageIdAndUserId(m.getId(), userId)) {
+                MessageVisibility vis = new MessageVisibility();
+                vis.setMessageId(m.getId());
+                vis.setUserId(userId);
+                visibilityRepository.save(vis);
+            }
+        }
+        log.info("Cleared all {} messages in chat {} for user {}", messages.size(), chatId, userId);
+    }
 
-    private UUID findOrCreatePrivateChat(UUID userA, String usernameA,
-            UUID userB, String usernameB) {
+    @Override
+    @Transactional
+    public void exitGroup(UUID groupId, UUID userId) {
+        Group group = groupRepository.findById(groupId)
+                .orElseThrow(() -> new GroupNotFoundException("Group not found."));
+        GroupMember member = groupMemberRepository.findByGroupIdAndUserId(groupId, userId)
+                .orElseThrow(() -> new NotChatMemberException("You are not a member of this group."));
+
+        member.setLeftAt(Instant.now());
+        groupMemberRepository.save(member);
+
+        group.setMemberCount(Math.max(0, group.getMemberCount() - 1));
+        groupRepository.save(group);
+
+        participantRepository.findByChatId(group.getChatId()).stream()
+                .filter(p -> p.getUserId().equals(userId))
+                .findFirst()
+                .ifPresent(p -> {
+                    p.setLeftAt(Instant.now());
+                    participantRepository.save(p);
+                });
+
+        recordGroupEvent(groupId, "MEMBER_LEFT", userId, null, "A member left the group");
+        sendGroupEventMessage(group.getChatId(), groupId, userId, "A member left the group");
+        kafkaProducer.publishGroupEvent(groupId.toString(), "MEMBER_LEFT",
+                userId.toString(), userId.toString());
+
+        log.info("User {} exited group {}", userId, groupId);
+    }
+
+    @Override
+    @Transactional
+    public GroupInfo updateGroupPhoto(UUID groupId, UUID userId, byte[] profilePicture) {
+        if (!groupMemberRepository.existsByGroupIdAndUserId(groupId, userId)) {
+            throw new NotChatMemberException("You are not a member of this group.");
+        }
+        Group group = groupRepository.findById(groupId)
+                .orElseThrow(() -> new GroupNotFoundException("Group not found."));
+
+        group.setProfilePicture(profilePicture);
+        group = groupRepository.save(group);
+
+        recordGroupEvent(groupId, "GROUP_UPDATED", userId, null, "Group photo updated");
+        log.info("Group {} photo updated by member {}", groupId, userId);
+        return toGroupInfo(group);
+    }
+
+    @Override
+    public byte[] getGroupPhoto(UUID groupId) {
+        return groupRepository.findById(groupId)
+                .map(Group::getProfilePicture)
+                .orElse(null);
+    }
+
+    @Override
+    @Transactional
+    public void deleteGroup(UUID groupId, UUID requesterId) {
+        Group group = groupRepository.findById(groupId)
+                .orElseThrow(() -> new GroupNotFoundException("Group not found."));
+
+        boolean isAdmin = groupMemberRepository
+                .existsByGroupIdAndUserIdAndRole(groupId, requesterId, Role.ADMIN);
+
+        if (isAdmin) {
+            UUID chatId = group.getChatId();
+
+            Map<String, Object> ws = new HashMap<>();
+            ws.put("type", "GROUP_DELETED");
+            ws.put("groupId", groupId.toString());
+            ws.put("chatId", chatId.toString());
+            messagingTemplate.convertAndSend("/topic/chat/" + chatId, ws);
+
+            participantRepository.findByChatId(chatId).forEach(p -> {
+                p.setLeftAt(Instant.now());
+                participantRepository.save(p);
+            });
+
+            groupMemberRepository.findByGroupId(groupId).forEach(m -> {
+                m.setLeftAt(Instant.now());
+                groupMemberRepository.save(m);
+            });
+
+            messageRepository.deleteByChatId(chatId);
+            cacheService.evictChatMessages(chatId.toString());
+
+            groupRepository.delete(group);
+            chatRepository.findById(chatId).ifPresent(chatRepository::delete);
+
+            log.info("Group {} permanently deleted by admin {}", groupId, requesterId);
+        } else {
+            GroupMember member = groupMemberRepository
+                    .findByGroupIdAndUserId(groupId, requesterId)
+                    .orElseThrow(() -> new NotChatMemberException("You are not a member of this group."));
+
+            member.setLeftAt(Instant.now());
+            groupMemberRepository.save(member);
+
+            group.setMemberCount(Math.max(0, group.getMemberCount() - 1));
+            groupRepository.save(group);
+
+            participantRepository.findByChatId(group.getChatId()).stream()
+                    .filter(p -> p.getUserId().equals(requesterId))
+                    .findFirst()
+                    .ifPresent(p -> {
+                        p.setLeftAt(Instant.now());
+                        participantRepository.save(p);
+                    });
+
+            List<Message> messages = messageRepository
+                    .findByChatIdOrderedForUser(group.getChatId(), requesterId);
+            for (Message m : messages) {
+                if (!visibilityRepository.existsByMessageIdAndUserId(m.getId(), requesterId)) {
+                    MessageVisibility vis = new MessageVisibility();
+                    vis.setMessageId(m.getId());
+                    vis.setUserId(requesterId);
+                    visibilityRepository.save(vis);
+                }
+            }
+
+            recordGroupEvent(groupId, "MEMBER_LEFT", requesterId, null,
+                    "A member left and deleted the group for themselves");
+
+            log.info("User {} exited and deleted group {} for themselves", requesterId, groupId);
+        }
+    }
+
+    // ── Private helpers ───────────────────────────────────────────────────────
+
+    private UUID findOrCreatePrivateChat(UUID userA, String usernameA, UUID userB, String usernameB) {
         List<UUID> shared = participantRepository.findPrivateChatBetween(userA, userB);
-        if (!shared.isEmpty())
-            return shared.get(0);
+        if (!shared.isEmpty()) return shared.get(0);
 
         Chat chat = new Chat();
         chat.setType(Chat.ChatType.PRIVATE);
@@ -1163,8 +917,7 @@ public WallpaperResponse getWallpaper(UUID chatId) {
         if (replyToId != null) {
             try {
                 m.setReplyToId(UUID.fromString(replyToId));
-            } catch (Exception ignored) {
-            }
+            } catch (Exception ignored) {}
         }
         return m;
     }
@@ -1179,19 +932,18 @@ public WallpaperResponse getWallpaper(UUID chatId) {
         att.setFileName(fileName != null ? fileName : stickerId);
         att.setFileType(fileType);
         att.setFileSizeBytes(fileSizeBytes);
-        // Store file path / sticker ID, NOT raw Base64
         att.setStoragePath(fileData != null ? fileData : stickerId);
         att.setUrl(url);
         att.setPreviewTitle(previewTitle);
         att.setPreviewDesc(previewDesc);
 
         switch (messageType.toUpperCase()) {
-            case "IMAGE" -> att.setMediaType(MediaType.IMAGE);
-            case "FILE" -> att.setMediaType(MediaType.FILE);
+            case "IMAGE"   -> att.setMediaType(MediaType.IMAGE);
+            case "FILE"    -> att.setMediaType(MediaType.FILE);
             case "CONTACT" -> att.setMediaType(MediaType.CONTACT);
             case "STICKER" -> att.setMediaType(MediaType.STICKER);
-            case "LINK" -> att.setMediaType(MediaType.LINK);
-            default -> att.setMediaType(MediaType.FILE);
+            case "LINK"    -> att.setMediaType(MediaType.LINK);
+            default        -> att.setMediaType(MediaType.FILE);
         }
         return mediaRepository.save(att);
     }
@@ -1211,16 +963,13 @@ public WallpaperResponse getWallpaper(UUID chatId) {
         if (attachment != null) {
             idx.setFileName(attachment.getFileName());
             idx.setUrl(attachment.getUrl());
-            idx.setMediaType(attachment.getMediaType() != null
-                    ? attachment.getMediaType().name()
-                    : null);
+            idx.setMediaType(attachment.getMediaType() != null ? attachment.getMediaType().name() : null);
         }
         searchIndexRepository.save(idx);
     }
 
     private boolean hasAttachment(String messageType) {
-        if (messageType == null)
-            return false;
+        if (messageType == null) return false;
         return switch (messageType.toUpperCase()) {
             case "IMAGE", "FILE", "CONTACT", "STICKER", "LINK" -> true;
             default -> false;
@@ -1234,12 +983,10 @@ public WallpaperResponse getWallpaper(UUID chatId) {
 
         chatRepository.findById(chatId).ifPresent(chat -> {
             summary.setType(chat.getType().name());
-
             if (chat.getType() == Chat.ChatType.GROUP) {
                 groupRepository.findByChatId(chatId)
                         .ifPresent(group -> summary.setGroupInfo(toGroupInfo(group)));
             } else {
-                // Set otherParticipantUsername for private chats
                 participantRepository.findByChatId(chatId).stream()
                         .filter(p -> !p.getUserId().equals(userId))
                         .findFirst()
@@ -1254,7 +1001,6 @@ public WallpaperResponse getWallpaper(UUID chatId) {
             summary.setLastMessageAt(last.getSentAt().toString());
         }
 
-        // Set unreadCount
         long unread = messageRepository.findUnreadMessages(chatId, MessageStatus.SENT, userId).size()
                 + messageRepository.findUnreadMessages(chatId, MessageStatus.DELIVERED, userId).size();
         summary.setUnreadCount((int) unread);
@@ -1262,9 +1008,7 @@ public WallpaperResponse getWallpaper(UUID chatId) {
         return summary;
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Mappers
-    // ─────────────────────────────────────────────────────────────────────────
+    // ── Mappers ───────────────────────────────────────────────────────────────
 
     private MessageResponse toMessageResponse(Message m, MediaAttachment attachment) {
         MessageResponse r = new MessageResponse();
@@ -1285,8 +1029,7 @@ public WallpaperResponse getWallpaper(UUID chatId) {
         r.setDeletedAt(m.getDeletedAt() != null ? m.getDeletedAt().toString() : null);
         r.setUpdatedAt(m.getUpdatedAt() != null ? m.getUpdatedAt().toString() : null);
         r.setDate(m.getSentAt() != null ? DATE_FORMATTER.format(m.getSentAt()) : null);
-        if (attachment != null)
-            r.setAttachment(toMediaResponse(attachment));
+        if (attachment != null) r.setAttachment(toMediaResponse(attachment));
         return r;
     }
 
@@ -1310,7 +1053,14 @@ public WallpaperResponse getWallpaper(UUID chatId) {
         info.setGroupId(g.getId().toString());
         info.setName(g.getName());
         info.setDescription(g.getDescription());
-        info.setProfilePicture(g.getProfilePicture());
+
+        if (g.getProfilePicture() != null) {
+            String base64 = Base64.getEncoder().encodeToString(g.getProfilePicture());
+            info.setProfilePicture("data:image/jpeg;base64," + base64);
+        } else {
+            info.setProfilePicture(null);
+        }
+
         info.setMemberCount(g.getMemberCount());
         info.setCreatorId(g.getCreatorId().toString());
         info.setCreatedAt(g.getCreatedAt() != null ? g.getCreatedAt().toString() : null);
@@ -1358,8 +1108,7 @@ public WallpaperResponse getWallpaper(UUID chatId) {
         return ws;
     }
 
-    private void sendGroupEventMessage(UUID chatId, UUID groupId,
-            UUID actorId, String eventText) {
+    private void sendGroupEventMessage(UUID chatId, UUID groupId, UUID actorId, String eventText) {
         try {
             Message eventMsg = new Message();
             eventMsg.setChatId(chatId);
@@ -1381,20 +1130,12 @@ public WallpaperResponse getWallpaper(UUID chatId) {
     }
 
     private WallpaperResponse toWallpaperResponse(ChatSettings s) {
-
-    WallpaperResponse r = new WallpaperResponse();
-
-    r.setChatId(s.getChatId().toString());
-    r.setWallpaperType(s.getWallpaperType());
-    r.setWallpaperData(s.getWallpaperData());
-    r.setWallpaperColor(s.getWallpaperColor());
-
-    r.setUpdatedAt(
-            s.getUpdatedAt() != null
-                    ? s.getUpdatedAt().toString()
-                    : null
-    );
-
-    return r;
-}
+        WallpaperResponse r = new WallpaperResponse();
+        r.setChatId(s.getChatId().toString());
+        r.setWallpaperType(s.getWallpaperType());
+        r.setWallpaperData(s.getWallpaperData());
+        r.setWallpaperColor(s.getWallpaperColor());
+        r.setUpdatedAt(s.getUpdatedAt() != null ? s.getUpdatedAt().toString() : null);
+        return r;
+    }
 }

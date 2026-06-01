@@ -8,91 +8,104 @@ import java.util.UUID;
 
 public interface ChatService {
 
-        // ── Private messaging ─────────────────────────────────────────────────
-        MessageResponse sendPrivateMessage(UUID senderId, String senderUsername,
-                        SendPrivateMessageRequest request);
+    // ── Private messaging ─────────────────────────────────────────────────
+    MessageResponse sendPrivateMessage(UUID senderId, String senderUsername,
+            SendPrivateMessageRequest request);
 
-        // ── Group messaging ───────────────────────────────────────────────────
-        MessageResponse sendGroupMessage(UUID senderId, String senderUsername,
-                        SendGroupMessageRequest request);
+    // ── Group messaging ───────────────────────────────────────────────────
+    MessageResponse sendGroupMessage(UUID senderId, String senderUsername,
+            SendGroupMessageRequest request);
 
-        // ── Fetch chats ───────────────────────────────────────────────────────
-        List<ChatSummaryResponse> getChatsForUser(UUID userId);
+    // ── Fetch chats ───────────────────────────────────────────────────────
+    List<ChatSummaryResponse> getChatsForUser(UUID userId);
 
-        List<MessageResponse> getChatMessages(UUID chatId, UUID requestingUserId);
+    List<MessageResponse> getChatMessages(UUID chatId, UUID requestingUserId);
 
-        List<ChatSummaryResponse> getChatsForUserByUsername(String username);
+    List<ChatSummaryResponse> getChatsForUserByUsername(String username);
 
-        // ── Groups ────────────────────────────────────────────────────────────
-        GroupInfo createGroup(UUID creatorId, String creatorUsername,
-                        CreateGroupRequest request);
+    // ── Groups ────────────────────────────────────────────────────────────
+    GroupInfo createGroup(UUID creatorId, String creatorUsername,
+            CreateGroupRequest request);
 
-        List<GroupInfo> getGroupsForUser(UUID userId);
+    List<GroupInfo> getGroupsForUser(UUID userId);
 
-        void addMember(UUID groupId, UUID adminId, UUID newMemberId, String newMemberUsername);
+    void addMember(UUID groupId, UUID adminId, UUID newMemberId, String newMemberUsername);
 
-        void removeMember(UUID groupId, UUID adminId, UUID targetUserId);
+    void removeMember(UUID groupId, UUID adminId, UUID targetUserId);
 
-        void promoteAdmin(UUID groupId, UUID adminId, UUID targetUserId);
+    void promoteAdmin(UUID groupId, UUID adminId, UUID targetUserId);
 
-        List<GroupMemberResponse> getGroupMembers(UUID groupId);
+    List<GroupMemberResponse> getGroupMembers(UUID groupId);
 
-        // ── Update group info ─────────────────────────────────────────────────
-        GroupInfo updateGroupInfo(UUID groupId, UUID adminId, UpdateGroupRequest request);
+    void exitGroup(UUID groupId, UUID userId);
 
-        // ── Group events ──────────────────────────────────────────────────────
-        List<GroupEventResponse> getGroupEvents(UUID groupId);
+    // ── Delete group ──────────────────────────────────────────────────────
+    // If requesterId is admin → permanently delete group for everyone
+    // If requesterId is non-admin → exit + hide group for themselves only
+    void deleteGroup(UUID groupId, UUID requesterId);
 
-        // ── Message actions ───────────────────────────────────────────────────
-        MessageResponse editMessage(UUID messageId, UUID editorId, EditMessageRequest request);
+    // ── Update group info ─────────────────────────────────────────────────
+    GroupInfo updateGroupInfo(UUID groupId, UUID adminId, UpdateGroupRequest request);
 
-        void deleteForMe(UUID messageId, UUID userId);
+    GroupInfo updateGroupPhoto(UUID groupId, UUID userId, byte[] profilePicture);
 
-        void deleteForEveryone(UUID messageId, UUID requesterId);
+    byte[] getGroupPhoto(UUID groupId);
 
-        // ── Media retrieval ───────────────────────────────────────────────────
-        List<MediaAttachmentResponse> getChatImages(UUID chatId);
+    // ── Group events ──────────────────────────────────────────────────────
+    List<GroupEventResponse> getGroupEvents(UUID groupId);
 
-        List<MediaAttachmentResponse> getChatFiles(UUID chatId);
+    // ── Message actions ───────────────────────────────────────────────────
+    MessageResponse editMessage(UUID messageId, UUID editorId, EditMessageRequest request);
 
-        List<MediaAttachmentResponse> getChatLinks(UUID chatId);
+    void deleteForMe(UUID messageId, UUID userId);
 
-        // ── Search ────────────────────────────────────────────────────────────
-        List<MessageResponse> searchChat(UUID chatId, String query, UUID requestingUserId);
+    void deleteForEveryone(UUID messageId, UUID requesterId);
 
-        List<MessageResponse> searchChatWithFilters(
-                        UUID chatId,
-                        UUID requestingUserId,
-                        String query,
-                        UUID senderId,
-                        String mediaType,
-                        Instant from,
-                        Instant to);
+    void clearChatForMe(UUID chatId, UUID userId);
 
-        // ── Archive ───────────────────────────────────────────────────────────
-        void archiveChat(UUID chatId, UUID userId);
+    // ── Media retrieval ───────────────────────────────────────────────────
+    List<MediaAttachmentResponse> getChatImages(UUID chatId);
 
-        void unarchiveChat(UUID chatId, UUID userId);
+    List<MediaAttachmentResponse> getChatFiles(UUID chatId);
 
-        List<ChatSummaryResponse> getArchivedChats(UUID userId);
+    List<MediaAttachmentResponse> getChatLinks(UUID chatId);
 
-        // ── Search in archived chats ──────────────────────────────────────────
-        List<MessageResponse> searchArchivedChats(UUID userId, String query);
+    // ── Search ────────────────────────────────────────────────────────────
+    List<MessageResponse> searchChat(UUID chatId, String query, UUID requestingUserId);
 
-        // ── Status ────────────────────────────────────────────────────────────
-        void markDelivered(UUID chatId, UUID userId);
+    List<MessageResponse> searchChatWithFilters(
+            UUID chatId,
+            UUID requestingUserId,
+            String query,
+            UUID senderId,
+            String mediaType,
+            Instant from,
+            Instant to);
 
-        void markRead(UUID chatId, UUID userId);
+    // ── Archive ───────────────────────────────────────────────────────────
+    void archiveChat(UUID chatId, UUID userId);
 
-        // ── Wallpaper ─────────────────────────────────────────────────────────
-        WallpaperResponse setWallpaper(UUID chatId, WallpaperRequest request);
+    void unarchiveChat(UUID chatId, UUID userId);
 
-        WallpaperResponse getWallpaper(UUID chatId);
+    List<ChatSummaryResponse> getArchivedChats(UUID userId);
 
-        // ── Contact sharing ───────────────────────────────────────────────────
-        MessageResponse sendContact(
-                        UUID senderId,
-                        String senderUsername,
-                        UUID chatId,
-                        ContactPayload contact);
+    // ── Search in archived chats ──────────────────────────────────────────
+    List<MessageResponse> searchArchivedChats(UUID userId, String query);
+
+    // ── Status ────────────────────────────────────────────────────────────
+    void markDelivered(UUID chatId, UUID userId);
+
+    void markRead(UUID chatId, UUID userId);
+
+    // ── Wallpaper ─────────────────────────────────────────────────────────
+    WallpaperResponse setWallpaper(UUID chatId, WallpaperRequest request);
+
+    WallpaperResponse getWallpaper(UUID chatId);
+
+    // ── Contact sharing ───────────────────────────────────────────────────
+    MessageResponse sendContact(
+            UUID senderId,
+            String senderUsername,
+            UUID chatId,
+            ContactPayload contact);
 }

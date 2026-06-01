@@ -82,4 +82,48 @@ public class UserServiceClient {
             throw new UserNotFoundException("User not found: " + username);
         }
     }
+    public String getUsernameById(UUID userId) {
+    try {
+        log.info("Calling auth service for userId={}", userId);
+
+        String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
+
+        Map response = authWebClient.get()
+                .uri("/api/v1/auth/users/" + userId)
+                .header(HttpHeaders.AUTHORIZATION, authHeader)
+                .retrieve()
+                .bodyToMono(Map.class)
+                .block();
+
+        if (response == null) {
+            log.error("Auth service returned null response for userId={}", userId);
+            throw new UserNotFoundException("User not found: " + userId);
+        }
+
+        Map data = (Map) response.get("data");
+        if (data == null) {
+            log.error("data field is null in response for userId={}", userId);
+            throw new UserNotFoundException("User not found: " + userId);
+        }
+
+        String username = data.get("username") != null
+                ? (String) data.get("username")
+                : null;
+
+        log.info("Resolved username={} for userId={}", username, userId);
+
+        if (username == null) {
+            log.error("username field not found in data for userId={}", userId);
+            throw new UserNotFoundException("User not found: " + userId);
+        }
+
+        return username;
+
+    } catch (UserNotFoundException e) {
+        throw e;
+    } catch (Exception e) {
+        log.error("Exception calling auth service for userId={} error={}", userId, e.getMessage(), e);
+        throw new UserNotFoundException("User not found: " + userId);
+    }
+}
 }
