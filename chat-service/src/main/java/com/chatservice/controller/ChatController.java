@@ -2,19 +2,22 @@ package com.chatservice.controller;
 
 import com.chatservice.dto.ChatDtos.*;
 import com.chatservice.service.ChatService;
+import com.chatservice.websocket.PresenceEventListener; // ✅ add this
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.MediaType;
+
 import java.io.IOException;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;   // ✅ add this
+import java.util.Set;   // ✅ add this
 import java.util.UUID;
 
 @RestController
@@ -24,15 +27,20 @@ public class ChatController {
     private static final Logger log = LoggerFactory.getLogger(ChatController.class);
 
     private final ChatService chatService;
+    private final PresenceEventListener presenceEventListener; // ✅ add this
 
-    public ChatController(ChatService chatService) {
-        this.chatService = chatService;
+    // ✅ inject via constructor
+    public ChatController(ChatService chatService,
+                          PresenceEventListener presenceEventListener) {
+        this.chatService            = chatService;
+        this.presenceEventListener  = presenceEventListener;
     }
+
+    // ── all your existing endpoints unchanged ──────────────────────────────
 
     @GetMapping("/chats/{userId}")
     public ResponseEntity<ApiResponse> getChats(
-            @PathVariable UUID userId,
-            Authentication auth) {
+            @PathVariable UUID userId, Authentication auth) {
         log.info("GET /chats/{}", userId);
         List<ChatSummaryResponse> chats = chatService.getChatsForUser(userId);
         return ok("Chats fetched successfully.", chats);
@@ -40,8 +48,7 @@ public class ChatController {
 
     @GetMapping("/chats/username/{username}")
     public ResponseEntity<ApiResponse> getChatsByUsername(
-            @PathVariable String username,
-            Authentication auth) {
+            @PathVariable String username, Authentication auth) {
         log.info("GET /chats/username/{}", username);
         List<ChatSummaryResponse> chats = chatService.getChatsForUserByUsername(username);
         return ok("Chats fetched successfully.", chats);
@@ -49,8 +56,7 @@ public class ChatController {
 
     @GetMapping("/chats/{chatId}/messages")
     public ResponseEntity<ApiResponse> getChatMessages(
-            @PathVariable UUID chatId,
-            Authentication auth) {
+            @PathVariable UUID chatId, Authentication auth) {
         UUID userId = uuid(auth);
         log.info("GET /chats/{}/messages userId={}", chatId, userId);
         List<MessageResponse> messages = chatService.getChatMessages(chatId, userId);
@@ -177,8 +183,7 @@ public class ChatController {
 
     @DeleteMapping("/messages/{messageId}/me")
     public ResponseEntity<ApiResponse> deleteForMe(
-            @PathVariable UUID messageId,
-            Authentication auth) {
+            @PathVariable UUID messageId, Authentication auth) {
         UUID userId = uuid(auth);
         chatService.deleteForMe(messageId, userId);
         return ok("Message deleted for you.", null);
@@ -186,8 +191,7 @@ public class ChatController {
 
     @DeleteMapping("/messages/{messageId}/everyone")
     public ResponseEntity<ApiResponse> deleteForEveryone(
-            @PathVariable UUID messageId,
-            Authentication auth) {
+            @PathVariable UUID messageId, Authentication auth) {
         UUID userId = uuid(auth);
         chatService.deleteForEveryone(messageId, userId);
         return ok("Message deleted for everyone.", null);
@@ -195,19 +199,16 @@ public class ChatController {
 
     @GetMapping("/chats/{chatId}/images")
     public ResponseEntity<ApiResponse> getChatImages(@PathVariable UUID chatId) {
-        log.info("GET /chats/{}/images", chatId);
         return ok("Images fetched.", chatService.getChatImages(chatId));
     }
 
     @GetMapping("/chats/{chatId}/files")
     public ResponseEntity<ApiResponse> getChatFiles(@PathVariable UUID chatId) {
-        log.info("GET /chats/{}/files", chatId);
         return ok("Files fetched.", chatService.getChatFiles(chatId));
     }
 
     @GetMapping("/chats/{chatId}/links")
     public ResponseEntity<ApiResponse> getChatLinks(@PathVariable UUID chatId) {
-        log.info("GET /chats/{}/links", chatId);
         return ok("Links fetched.", chatService.getChatLinks(chatId));
     }
 
@@ -217,7 +218,6 @@ public class ChatController {
             @RequestParam String query,
             Authentication auth) {
         UUID userId = uuid(auth);
-        log.info("GET /chats/{}/search query={} userId={}", chatId, query, userId);
         return ok("Search results.", chatService.searchChat(chatId, query, userId));
     }
 
@@ -231,10 +231,8 @@ public class ChatController {
             @RequestParam(required = false) String to,
             Authentication auth) {
         UUID userId = uuid(auth);
-        log.info("GET /chats/{}/search/advanced query={} sender={} mediaType={}",
-                chatId, query, senderId, mediaType);
         Instant fromInstant = from != null ? Instant.parse(from) : null;
-        Instant toInstant = to != null ? Instant.parse(to) : null;
+        Instant toInstant   = to   != null ? Instant.parse(to)   : null;
         return ok("Search results.",
                 chatService.searchChatWithFilters(chatId, userId, query,
                         senderId, mediaType, fromInstant, toInstant));
@@ -242,8 +240,7 @@ public class ChatController {
 
     @PostMapping("/chats/{chatId}/archive")
     public ResponseEntity<ApiResponse> archiveChat(
-            @PathVariable UUID chatId,
-            Authentication auth) {
+            @PathVariable UUID chatId, Authentication auth) {
         UUID userId = uuid(auth);
         chatService.archiveChat(chatId, userId);
         return ok("Chat archived.", null);
@@ -251,8 +248,7 @@ public class ChatController {
 
     @DeleteMapping("/chats/{chatId}/archive")
     public ResponseEntity<ApiResponse> unarchiveChat(
-            @PathVariable UUID chatId,
-            Authentication auth) {
+            @PathVariable UUID chatId, Authentication auth) {
         UUID userId = uuid(auth);
         chatService.unarchiveChat(chatId, userId);
         return ok("Chat unarchived.", null);
@@ -266,17 +262,14 @@ public class ChatController {
 
     @GetMapping("/chats/archived/search")
     public ResponseEntity<ApiResponse> searchArchivedChats(
-            @RequestParam String query,
-            Authentication auth) {
+            @RequestParam String query, Authentication auth) {
         UUID userId = uuid(auth);
-        log.info("GET /chats/archived/search query={} userId={}", query, userId);
         return ok("Archived search results.", chatService.searchArchivedChats(userId, query));
     }
 
     @PostMapping("/chats/{chatId}/delivered")
     public ResponseEntity<ApiResponse> markDelivered(
-            @PathVariable UUID chatId,
-            Authentication auth) {
+            @PathVariable UUID chatId, Authentication auth) {
         UUID userId = uuid(auth);
         chatService.markDelivered(chatId, userId);
         return ok("Messages marked as delivered.", null);
@@ -284,8 +277,7 @@ public class ChatController {
 
     @PostMapping("/chats/{chatId}/read")
     public ResponseEntity<ApiResponse> markRead(
-            @PathVariable UUID chatId,
-            Authentication auth) {
+            @PathVariable UUID chatId, Authentication auth) {
         UUID userId = uuid(auth);
         chatService.markRead(chatId, userId);
         return ok("Messages marked as read.", null);
@@ -293,7 +285,6 @@ public class ChatController {
 
     @GetMapping("/chats/{chatId}/wallpaper")
     public ResponseEntity<ApiResponse> getWallpaper(@PathVariable UUID chatId) {
-        log.info("GET /chats/{}/wallpaper", chatId);
         return ok("Wallpaper fetched.", chatService.getWallpaper(chatId));
     }
 
@@ -301,37 +292,32 @@ public class ChatController {
     public ResponseEntity<ApiResponse> setWallpaper(
             @PathVariable UUID chatId,
             @Valid @RequestBody WallpaperRequest request) {
-        log.info("PUT /chats/{}/wallpaper", chatId);
         return ok("Wallpaper updated.", chatService.setWallpaper(chatId, request));
     }
 
     @DeleteMapping("/chats/{chatId}/clear-for-me")
     public ResponseEntity<ApiResponse> clearChatForMe(
-            @PathVariable UUID chatId,
-            Authentication auth) {
+            @PathVariable UUID chatId, Authentication auth) {
         UUID userId = uuid(auth);
-        log.info("DELETE /chats/{}/clear-for-me userId={}", chatId, userId);
         chatService.clearChatForMe(chatId, userId);
         return ok("Chat cleared for you.", null);
     }
 
     @DeleteMapping("/groups/{groupId}/exit")
     public ResponseEntity<ApiResponse> exitGroup(
-            @PathVariable UUID groupId,
-            Authentication auth) {
+            @PathVariable UUID groupId, Authentication auth) {
         UUID userId = uuid(auth);
-        log.info("DELETE /groups/{}/exit userId={}", groupId, userId);
         chatService.exitGroup(groupId, userId);
         return ok("You have left the group.", null);
     }
 
-    @PutMapping(value = "/groups/{groupId}/photo", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PutMapping(value = "/groups/{groupId}/photo",
+                consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse> updateGroupPhoto(
             @PathVariable UUID groupId,
-            @RequestPart(value = "photo") org.springframework.web.multipart.MultipartFile photo,
-            Authentication auth) throws java.io.IOException {
+            @RequestPart("photo") org.springframework.web.multipart.MultipartFile photo,
+            Authentication auth) throws IOException {
         UUID userId = uuid(auth);
-        log.info("PUT /groups/{}/photo userId={}", groupId, userId);
         GroupInfo group = chatService.updateGroupPhoto(groupId, userId, photo.getBytes());
         return ok("Group photo updated.", group);
     }
@@ -348,13 +334,20 @@ public class ChatController {
 
     @DeleteMapping("/groups/{groupId}")
     public ResponseEntity<ApiResponse> deleteGroup(
-            @PathVariable UUID groupId,
-            Authentication auth) {
+            @PathVariable UUID groupId, Authentication auth) {
         UUID userId = uuid(auth);
-        log.info("DELETE /groups/{} requesterId={}", groupId, userId);
         chatService.deleteGroup(groupId, userId);
         return ok("Group deleted.", null);
     }
+
+    // ✅ Presence endpoint — returns all currently online usernames
+    @GetMapping("/presence/online")
+    public ResponseEntity<?> getOnlineUsers() {
+        Set<String> onlineUsers = presenceEventListener.getOnlineUsernames();
+        return ResponseEntity.ok(Map.of("data", List.copyOf(onlineUsers)));
+    }
+
+    // ── helpers ───────────────────────────────────────────────────────────────
 
     private UUID uuid(Authentication auth) {
         return UUID.fromString((String) auth.getPrincipal());

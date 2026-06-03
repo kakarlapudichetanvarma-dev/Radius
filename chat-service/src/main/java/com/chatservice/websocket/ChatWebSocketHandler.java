@@ -2,7 +2,7 @@ package com.chatservice.websocket;
 
 import com.chatservice.dto.ChatDtos.*;
 import com.chatservice.kafka.ChatKafkaProducer;
-import com.chatservice.service.ChatService;
+import com.chatservice.service.RedisCacheService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
@@ -20,15 +20,19 @@ public class ChatWebSocketHandler {
 
     private final SimpMessagingTemplate messagingTemplate;
     private final ChatKafkaProducer     kafkaProducer;
+    private final RedisCacheService     cacheService;
 
     public ChatWebSocketHandler(SimpMessagingTemplate messagingTemplate,
-                                ChatKafkaProducer kafkaProducer) {
+                                ChatKafkaProducer kafkaProducer,
+                                RedisCacheService cacheService) {
         this.messagingTemplate = messagingTemplate;
         this.kafkaProducer     = kafkaProducer;
+        this.cacheService      = cacheService;
     }
 
+    // ── Chat messages ─────────────────────────────────────────────────────────
+
     // Client sends to: /app/chat.send/{chatId}
-    // Broadcast to:    /topic/chat/{chatId}
     @MessageMapping("/chat.send/{chatId}")
     public void handleSend(
             @DestinationVariable String chatId,
@@ -43,10 +47,8 @@ public class ChatWebSocketHandler {
         message.setSenderId(senderId);
         message.setType("MESSAGE");
 
-        // Broadcast to all subscribers of this chat
         messagingTemplate.convertAndSend("/topic/chat/" + chatId, message);
 
-        // Publish to Kafka for delivery tracking
         if (message.getMessageId() != null) {
             kafkaProducer.publishMessageSent(chatId, message.getMessageId(), senderId);
         }
@@ -90,5 +92,21 @@ public class ChatWebSocketHandler {
         typing.setSenderId(userId);
 
         messagingTemplate.convertAndSend("/topic/chat/" + chatId + "/typing", typing);
+    }
+
+    // ── Presence heartbeat ────────────────────────────────────────────────────
+
+    /**
+     * Client sends to: /app/presence.heartbeat every 30s.
+     * Refreshes the Redis online TTL so the user stays "online"
+     * as long as their browser tab is open and active.
+     */
+    @MessageMapping("/presence.heartbeat")
+    public void handleHeartbeat(Principal principal) {
+        if (principal == null) return;
+
+        String username = principal.getName();
+        cacheService.setUserOnline(username); // resets the 70s TTL
+        log.debug("HEARTBEAT username={}", username);
     }
 }

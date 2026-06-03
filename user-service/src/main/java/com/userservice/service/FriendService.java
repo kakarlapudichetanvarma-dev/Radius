@@ -6,23 +6,8 @@ import java.util.UUID;
 
 public interface FriendService {
 
-    FriendRequestResponse sendFriendRequest(
-            UUID requesterId,
-            String targetPhoneNumber,
-            String token);
-
-    FriendRequestResponse respondToRequest(
-            UUID receiverId,
-            UUID requestId,
-            boolean accept,
-            String token);
-
     List<FriendSummaryResponse> listFriends(
             UUID loggedInUserId,
-            String token);
-
-    List<FriendRequestResponse> listPendingRequests(
-            UUID userId,
             String token);
 
     UserSearchResult searchByPhone(
@@ -34,5 +19,4 @@ public interface FriendService {
             UUID requesterId,
             String phoneNumber,
             String token);
-
 }

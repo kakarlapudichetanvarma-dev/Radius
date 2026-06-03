@@ -34,7 +34,6 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        // ✅ No SockJS — plain WebSocket
         registry.addEndpoint("/ws")
                 .setAllowedOriginPatterns("*");
         log.info("WebSocket STOMP endpoint registered at /ws");
@@ -59,14 +58,21 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                     String authHeader = accessor.getFirstNativeHeader("Authorization");
 
                     if (StringUtils.hasText(authHeader) && authHeader.startsWith("Bearer ")) {
-                        String token = authHeader.substring(7);
+                        String token    = authHeader.substring(7);
+
                         if (jwtUtil.validateToken(token)) {
-                            String userId = jwtUtil.extractUserId(token);
-                            UsernamePasswordAuthenticationToken auth =
-                                    new UsernamePasswordAuthenticationToken(
-                                            userId, null, Collections.emptyList());
-                            accessor.setUser(auth);
-                            log.info("WebSocket CONNECT authenticated userId={}", userId);
+                            // ✅ Use username as principal — frontend identifies users by username
+                            String username = jwtUtil.extractUsername(token);
+
+                            if (StringUtils.hasText(username)) {
+                                UsernamePasswordAuthenticationToken auth =
+                                        new UsernamePasswordAuthenticationToken(
+                                                username, null, Collections.emptyList());
+                                accessor.setUser(auth);
+                                log.info("WebSocket CONNECT authenticated username={}", username);
+                            } else {
+                                log.warn("WebSocket CONNECT rejected — username claim missing in token");
+                            }
                         } else {
                             log.warn("WebSocket CONNECT rejected — invalid token");
                         }

@@ -19,79 +19,12 @@ import java.util.logging.Logger;
 public class FriendController {
 
     private static final Logger log =
-            Logger.getLogger(
-                    FriendController.class.getName()
-            );
+            Logger.getLogger(FriendController.class.getName());
 
     private final FriendService friendService;
 
     public FriendController(FriendService friendService) {
         this.friendService = friendService;
-    }
-
-    @PostMapping("/request")
-    public ResponseEntity<ApiResponse> sendRequest(
-            @Valid @RequestBody FriendRequestDto body,
-            Authentication auth,
-            @RequestHeader("Authorization") String token) {
-
-        UUID requesterId =
-                UUID.fromString(
-                        (String) auth.getPrincipal()
-                );
-
-        FriendRequestResponse resp =
-                friendService.sendFriendRequest(
-                        requesterId,
-                        body.getPhoneNumber(),
-                        token
-                );
-
-        ApiResponse response = new ApiResponse();
-        response.setSuccess(true);
-        response.setMessage("Friend request sent successfully.");
-        response.setData(resp);
-
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(response);
-    }
-
-    @PostMapping("/accept")
-    public ResponseEntity<ApiResponse> respondRequest(
-            @Valid @RequestBody FriendRequestActionDto body,
-            Authentication auth,
-            @RequestHeader("Authorization") String token) {
-
-        UUID receiverId =
-                UUID.fromString(
-                        (String) auth.getPrincipal()
-                );
-
-        UUID requestId =
-                UUID.fromString(body.getRequestId());
-
-        boolean accept =
-                "ACCEPT".equalsIgnoreCase(body.getAction());
-
-        FriendRequestResponse resp =
-                friendService.respondToRequest(
-                        receiverId,
-                        requestId,
-                        accept,
-                        token
-                );
-
-        ApiResponse response = new ApiResponse();
-        response.setSuccess(true);
-        response.setMessage(
-                accept
-                        ? "Friend request accepted."
-                        : "Friend request rejected."
-        );
-        response.setData(resp);
-
-        return ResponseEntity.ok(response);
     }
 
     // ── GET /friends/search ──────────────────────────────────────────────────
@@ -114,27 +47,6 @@ public class FriendController {
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/requests/pending")
-    public ResponseEntity<ApiResponse> pendingRequests(
-            Authentication auth,
-            @RequestHeader("Authorization") String token) {
-
-        UUID userId =
-                UUID.fromString(
-                        (String) auth.getPrincipal()
-                );
-
-        List<FriendRequestResponse> requests =
-                friendService.listPendingRequests(userId, token);
-
-        ApiResponse response = new ApiResponse();
-        response.setSuccess(true);
-        response.setMessage("Pending requests fetched.");
-        response.setData(requests);
-
-        return ResponseEntity.ok(response);
-    }
-
     // ── GET /friends/search-by-phone ─────────────────────────────────────────
     @GetMapping("/search-by-phone")
     public ResponseEntity<ApiResponse> searchByPhone(
@@ -146,11 +58,7 @@ public class FriendController {
                 UUID.fromString((String) auth.getPrincipal());
 
         UserSearchResult result =
-                friendService.searchByPhone(
-                        requesterId,
-                        phone,
-                        token
-                );
+                friendService.searchByPhone(requesterId, phone, token);
 
         ApiResponse response = new ApiResponse();
         response.setSuccess(true);
@@ -182,6 +90,8 @@ public class FriendController {
         response.setMessage("Friend added successfully.");
         response.setData(result);
 
-        return ResponseEntity.ok(response);
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(response);
     }
 }
