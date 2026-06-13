@@ -85,7 +85,7 @@ public class GatewayConfig {
                         .uri(chatServiceUrl))
                         // ── CHAT SERVICE (protected — JWT required) ────────────────────
 .route("chat-service", r -> r
-        .path("/api/v1/chat/**")
+        .path("/api/v1/chat/**", "/api/v1/community/**")
         .filters(f -> f
                 .filter(jwtAuthFilter.apply(
                         new JwtAuthenticationFilter.Config()
