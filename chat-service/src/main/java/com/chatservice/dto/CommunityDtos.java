@@ -2,6 +2,8 @@ package com.chatservice.dto;
 
 import com.chatservice.entity.CommunityJoinRequest;
 import com.chatservice.entity.CommunityMember;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -101,7 +103,8 @@ public class CommunityDtos {
         private int memberCount;
         private int groupCount;
         private String createdByName;
-        private boolean isValid;
+       @JsonProperty("isValid")
+private boolean isValid;
         private String invalidReason;
     }
 

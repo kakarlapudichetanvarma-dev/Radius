@@ -31,7 +31,7 @@ import java.util.stream.Collectors;
 public class ChatServiceImpl implements ChatService {
 
     private static final Logger log = LoggerFactory.getLogger(ChatServiceImpl.class);
-
+private final CommunityGroupLinkRepository communityGroupLinkRepository;
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd MMM yyyy")
             .withZone(ZoneId.of("UTC"));
 
@@ -68,6 +68,7 @@ public class ChatServiceImpl implements ChatService {
             ChatKafkaProducer kafkaProducer,
             SimpMessagingTemplate messagingTemplate,
             RedisCacheService cacheService,
+            CommunityGroupLinkRepository communityGroupLinkRepository,
             UserServiceClient userServiceClient) {
 
         this.chatRepository = chatRepository;
@@ -85,6 +86,7 @@ public class ChatServiceImpl implements ChatService {
         this.kafkaProducer = kafkaProducer;
         this.messagingTemplate = messagingTemplate;
         this.cacheService = cacheService;
+        this.communityGroupLinkRepository = communityGroupLinkRepository;
         this.userServiceClient = userServiceClient;
     }
 
@@ -148,11 +150,11 @@ public class ChatServiceImpl implements ChatService {
     }
 
     @Override
-    public List<ChatSummaryResponse> getChatsForUserByUsername(String username) {
-        log.info("getChatsForUserByUsername username={}", username);
-        UUID userId = userServiceClient.getUserIdByUsername(username);
-        return getChatsForUser(userId);
-    }
+public List<ChatSummaryResponse> getChatsForUserByUsername(String username) {
+    log.info("getChatsForUserByUsername username={}", username);
+    UUID userId = userServiceClient.getUserIdByUsername(username);
+    return getChatsForUser(userId); // already filters community groups
+}
 
     @Override
     @Transactional
@@ -213,18 +215,26 @@ public class ChatServiceImpl implements ChatService {
     }
 
     @Override
-    public List<ChatSummaryResponse> getChatsForUser(UUID userId) {
-        log.info("getChatsForUser userId={}", userId);
+public List<ChatSummaryResponse> getChatsForUser(UUID userId) {
+    log.info("getChatsForUser userId={}", userId);
 
-        Set<UUID> archivedChatIds = archivedChatRepository.findByUserId(userId)
-                .stream().map(ArchivedChat::getChatId).collect(Collectors.toSet());
+    Set<UUID> archivedChatIds = archivedChatRepository.findByUserId(userId)
+            .stream().map(ArchivedChat::getChatId).collect(Collectors.toSet());
 
-        return participantRepository.findByUserId(userId).stream()
-                .filter(p -> p.getLeftAt() == null)
-                .filter(p -> !archivedChatIds.contains(p.getChatId()))
-                .map(p -> buildChatSummary(p.getChatId(), userId, false))
-                .collect(Collectors.toList());
-    }
+    // Collect all chatIds that belong to community groups — exclude from normal list
+    Set<UUID> communityGroupChatIds = communityGroupLinkRepository.findAll().stream()
+            .map(link -> groupRepository.findById(link.getGroupId())
+                    .map(Group::getChatId).orElse(null))
+            .filter(id -> id != null)
+            .collect(Collectors.toSet());
+
+    return participantRepository.findByUserId(userId).stream()
+            .filter(p -> p.getLeftAt() == null)
+            .filter(p -> !archivedChatIds.contains(p.getChatId()))
+            .filter(p -> !communityGroupChatIds.contains(p.getChatId())) // exclude community groups
+            .map(p -> buildChatSummary(p.getChatId(), userId, false))
+            .collect(Collectors.toList());
+}
 
     @Override
     public List<MessageResponse> getChatMessages(UUID chatId, UUID requestingUserId) {

@@ -31,10 +31,11 @@ public class CommunityServiceImpl implements CommunityService {
     private final CommunityJoinRequestRepository communityJoinRequestRepository;
     private final GroupRepository groupRepository;
     private final GroupMemberRepository groupMemberRepository;
+    private final ChatParticipantRepository chatParticipantRepository;
     private final UserServiceClient userServiceClient;
     private final ChatRepository chatRepository;
 
-    @Value("${app.base-url:http://localhost:8080}")
+    @Value("${app.base-url:http://localhost:5173}")
     private String baseUrl;
 
     // ── Community CRUD ────────────────────────────────────────────────────────
@@ -195,18 +196,24 @@ public class CommunityServiceImpl implements CommunityService {
         Chat chat = new Chat();
         chat.setType(Chat.ChatType.GROUP);
         chat = chatRepository.save(chat);
+        final UUID chatId = chat.getId();
 
         Group group = new Group();
         group.setName(request.getName());
-        group.setChatId(chat.getId());
+        group.setChatId(chatId);
         group.setCreatorId(requestingUserId);
         group.setMemberCount(1);
         group = groupRepository.save(group);
+        final UUID groupId = group.getId();
+
+        // Add creator as chat participant + group member
+        String creatorUsername = resolveName(requestingUserId);
+        addParticipantIfAbsent(chatId, requestingUserId, creatorUsername);
 
         GroupMember creatorMember = new GroupMember();
-        creatorMember.setGroupId(group.getId());
+        creatorMember.setGroupId(groupId);
         creatorMember.setUserId(requestingUserId);
-        creatorMember.setUsername(resolveName(requestingUserId));
+        creatorMember.setUsername(creatorUsername);
         creatorMember.setRole(GroupMember.Role.ADMIN);
         groupMemberRepository.save(creatorMember);
 
@@ -214,32 +221,37 @@ public class CommunityServiceImpl implements CommunityService {
             for (UUID memberId : request.getMemberIds()) {
                 if (memberId.equals(requestingUserId)) continue;
                 if (communityMemberRepository.existsByCommunityIdAndUserId(communityId, memberId)) {
+                    String memberUsername = resolveName(memberId);
+
+                    // Add to chat participants so they can send/receive messages
+                    addParticipantIfAbsent(chatId, memberId, memberUsername);
+
                     GroupMember gm = new GroupMember();
-                    gm.setGroupId(group.getId());
+                    gm.setGroupId(groupId);
                     gm.setUserId(memberId);
-                    gm.setUsername(resolveName(memberId));
+                    gm.setUsername(memberUsername);
                     gm.setRole(GroupMember.Role.MEMBER);
                     groupMemberRepository.save(gm);
                 }
             }
         }
 
-        int memberCount = groupMemberRepository.findByGroupId(group.getId()).size();
+        int memberCount = groupMemberRepository.findByGroupId(groupId).size();
         group.setMemberCount(memberCount);
         group = groupRepository.save(group);
 
         CommunityGroupLink link = CommunityGroupLink.builder()
                 .communityId(communityId)
-                .groupId(group.getId())
+                .groupId(groupId)
                 .addedBy(requestingUserId)
                 .build();
         communityGroupLinkRepository.save(link);
 
-        log.info("Group {} created inside community {} by user {}", group.getId(), communityId, requestingUserId);
+        log.info("Group {} created inside community {} by user {}", groupId, communityId, requestingUserId);
 
         return CommunityGroupSummary.builder()
-                .groupId(group.getId())
-                .chatId(group.getChatId())
+                .groupId(groupId)
+                .chatId(chatId)
                 .groupName(group.getName())
                 .groupPhotoUrl(null)
                 .memberCount(memberCount)
@@ -293,7 +305,7 @@ public class CommunityServiceImpl implements CommunityService {
         ).collect(Collectors.toList());
     }
 
-    // ── Invite ────────────────────────────────────────────────────────────────
+    // ── Invite — NEVER EXPIRES ─────────────────────────────────────────────
 
     @Override
     @Transactional
@@ -302,31 +314,38 @@ public class CommunityServiceImpl implements CommunityService {
         assertIsMember(communityId, requestingUserId);
         findCommunityOrThrow(communityId);
 
+        // Reuse existing active invite for this community if one exists
+        List<CommunityInvite> existing = communityInviteRepository
+                .findByCommunityIdAndIsActiveTrue(communityId);
+        if (!existing.isEmpty()) {
+            CommunityInvite inv = existing.get(0);
+            String link = baseUrl + "/community/invite/" + inv.getToken();
+            return GenerateInviteResponse.builder()
+                    .token(inv.getToken())
+                    .inviteLink(link)
+                    .expiresAt(null) // never expires
+                    .build();
+        }
+
         String token = UUID.randomUUID().toString().replace("-", "")
                 + Long.toHexString(System.currentTimeMillis());
-
-        LocalDateTime expiresAt = null;
-        if (request.getExpiryHours() != null) {
-            expiresAt = LocalDateTime.now().plusHours(request.getExpiryHours());
-        }
 
         CommunityInvite invite = CommunityInvite.builder()
                 .communityId(communityId)
                 .createdBy(requestingUserId)
                 .token(token)
-                .expiresAt(expiresAt)
-                .maxUses(request.getMaxUses())
+                .expiresAt(null)       // null = never expires
+                .maxUses(null)         // null = unlimited
                 .build();
         communityInviteRepository.save(invite);
 
-        // Uses configurable base URL instead of hardcoded domain
         String inviteLink = baseUrl + "/community/invite/" + token;
-        log.info("Invite generated for community {} by user {}", communityId, requestingUserId);
+        log.info("Permanent invite generated for community {} by user {}", communityId, requestingUserId);
 
         return GenerateInviteResponse.builder()
                 .token(token)
                 .inviteLink(inviteLink)
-                .expiresAt(expiresAt)
+                .expiresAt(null)
                 .build();
     }
 
@@ -336,14 +355,14 @@ public class CommunityServiceImpl implements CommunityService {
                 .findByTokenAndIsActiveTrue(token).orElse(null);
 
         if (invite == null) {
-            return InvitePreviewResponse.builder().isValid(false).invalidReason("REVOKED").build();
+            return InvitePreviewResponse.builder()
+                    .isValid(false)
+                    .invalidReason("REVOKED")
+                    .build();
         }
-        if (invite.getExpiresAt() != null && LocalDateTime.now().isAfter(invite.getExpiresAt())) {
-            return InvitePreviewResponse.builder().isValid(false).invalidReason("EXPIRED").build();
-        }
-        if (invite.getMaxUses() != null && invite.getUseCount() >= invite.getMaxUses()) {
-            return InvitePreviewResponse.builder().isValid(false).invalidReason("MAX_USES_REACHED").build();
-        }
+
+        // Skip expiry check — links never expire now
+        // Skip maxUses check — unlimited uses
 
         Community community = findCommunityOrThrow(invite.getCommunityId());
         int memberCount = communityMemberRepository.findByCommunityId(community.getId()).size();
@@ -368,12 +387,8 @@ public class CommunityServiceImpl implements CommunityService {
         CommunityInvite invite = communityInviteRepository.findByTokenAndIsActiveTrue(token)
                 .orElseThrow(() -> new ChatNotFoundException("Invite link is invalid or revoked"));
 
-        if (invite.getExpiresAt() != null && LocalDateTime.now().isAfter(invite.getExpiresAt())) {
-            throw new ChatNotFoundException("This invite link has expired");
-        }
-        if (invite.getMaxUses() != null && invite.getUseCount() >= invite.getMaxUses()) {
-            throw new ChatNotFoundException("This invite link has reached its maximum uses");
-        }
+        // No expiry check — permanent links
+
         if (communityMemberRepository.existsByCommunityIdAndUserId(invite.getCommunityId(), userId)) {
             log.info("User {} already a member of community {}", userId, invite.getCommunityId());
             return;
@@ -384,6 +399,27 @@ public class CommunityServiceImpl implements CommunityService {
                 .userId(userId)
                 .role(Role.MEMBER)
                 .build());
+
+        // Also add them as chat participant in all community groups
+        List<CommunityGroupLink> groupLinks = communityGroupLinkRepository
+                .findByCommunityIdAndIsVisibleTrue(invite.getCommunityId());
+
+        String username = resolveName(userId);
+        for (CommunityGroupLink link : groupLinks) {
+            Group group = groupRepository.findById(link.getGroupId()).orElse(null);
+            if (group == null) continue;
+
+            addParticipantIfAbsent(group.getChatId(), userId, username);
+
+            if (!groupMemberRepository.existsByGroupIdAndUserId(link.getGroupId(), userId)) {
+                GroupMember gm = new GroupMember();
+                gm.setGroupId(link.getGroupId());
+                gm.setUserId(userId);
+                gm.setUsername(username);
+                gm.setRole(GroupMember.Role.MEMBER);
+                groupMemberRepository.save(gm);
+            }
+        }
 
         invite.setUseCount(invite.getUseCount() + 1);
         communityInviteRepository.save(invite);
@@ -443,10 +479,12 @@ public class CommunityServiceImpl implements CommunityService {
                         .userId(joinRequest.getUserId())
                         .role(Role.MEMBER)
                         .build());
-                log.info("Join request accepted: user {} joined community {}", joinRequest.getUserId(), communityId);
+                log.info("Join request accepted: user {} joined community {}",
+                        joinRequest.getUserId(), communityId);
             }
         } else {
-            log.info("Join request rejected: user {} denied from community {}", joinRequest.getUserId(), communityId);
+            log.info("Join request rejected: user {} denied from community {}",
+                    joinRequest.getUserId(), communityId);
         }
     }
 
@@ -469,6 +507,16 @@ public class CommunityServiceImpl implements CommunityService {
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private void addParticipantIfAbsent(UUID chatId, UUID userId, String username) {
+        if (!chatParticipantRepository.existsByChatIdAndUserId(chatId, userId)) {
+            ChatParticipant p = new ChatParticipant();
+            p.setChatId(chatId);
+            p.setUserId(userId);
+            p.setUsername(username);
+            chatParticipantRepository.save(p);
+        }
+    }
 
     private Community findCommunityOrThrow(UUID communityId) {
         return communityRepository.findById(communityId)

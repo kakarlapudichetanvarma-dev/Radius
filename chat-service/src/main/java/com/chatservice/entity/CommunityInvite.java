@@ -29,6 +29,7 @@ public class CommunityInvite {
     @Column(nullable = false, unique = true)
     private String token;
 
+    // Kept in schema for compatibility but never set — links never expire
     private LocalDateTime expiresAt;
 
     @Builder.Default
@@ -39,6 +40,7 @@ public class CommunityInvite {
     @Column(name = "use_count")
     private int useCount = 0;
 
+    // null = unlimited uses
     @Column(name = "max_uses")
     private Integer maxUses;
 
