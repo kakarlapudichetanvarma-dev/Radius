@@ -96,7 +96,19 @@ public class GatewayConfig {
                 .addRequestHeader("X-Gateway-Source", gatewaySecret)
         )
         .uri(chatServiceUrl))
-
+// ── CHAT SERVICE — AI endpoints (protected — JWT required) ──────────────
+.route("chat-service-ai", r -> r
+        .path("/api/v1/ai/**")
+        .filters(f -> f
+                .filter(jwtAuthFilter.apply(
+                        new JwtAuthenticationFilter.Config()
+                ))
+                .requestRateLimiter(config -> config
+                        .setRateLimiter(redisRateLimiter())
+                        .setKeyResolver(userKeyResolver()))
+                .addRequestHeader("X-Gateway-Source", gatewaySecret)
+        )
+        .uri(chatServiceUrl))
 // ── CHAT SERVICE WebSocket ─────────────────────────────────────  ✅ add this
 .route("chat-service-ws", r -> r
         .path("/ws/**")

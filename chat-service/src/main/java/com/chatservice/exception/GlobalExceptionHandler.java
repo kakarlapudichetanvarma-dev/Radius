@@ -12,6 +12,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import com.chatservice.ai.exception.AiExceptions.*;
 
 import java.time.LocalDateTime;
 import java.util.stream.Collectors;
@@ -95,6 +96,33 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred.", req);
     }
 
+     @ExceptionHandler(AiProviderException.class)
+    public ResponseEntity<ErrorResponse> handleAiProviderException(
+            AiProviderException ex, HttpServletRequest req) {
+        log.error("AiProviderException: {}", ex.getMessage());
+        return build(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage(), req);
+    }
+
+    @ExceptionHandler(ConversationNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleConversationNotFound(
+            ConversationNotFoundException ex, HttpServletRequest req) {
+        log.warn("ConversationNotFound: {}", ex.getMessage());
+        return build(HttpStatus.NOT_FOUND, ex.getMessage(), req);
+    }
+
+    @ExceptionHandler(GroupNotResolvedException.class)
+    public ResponseEntity<ErrorResponse> handleGroupNotResolved(
+            GroupNotResolvedException ex, HttpServletRequest req) {
+        log.warn("GroupNotResolved: {}", ex.getMessage());
+        return build(HttpStatus.NOT_FOUND, ex.getMessage(), req);
+    }
+
+    @ExceptionHandler(AmbiguousGroupNameException.class)
+    public ResponseEntity<ErrorResponse> handleAmbiguousGroupName(
+            AmbiguousGroupNameException ex, HttpServletRequest req) {
+        log.warn("AmbiguousGroupName: {}", ex.getMessage());
+        return build(HttpStatus.CONFLICT, ex.getMessage(), req);
+    }
     private ResponseEntity<ErrorResponse> build(
             HttpStatus status, String message, HttpServletRequest req) {
         ErrorResponse body = new ErrorResponse();
