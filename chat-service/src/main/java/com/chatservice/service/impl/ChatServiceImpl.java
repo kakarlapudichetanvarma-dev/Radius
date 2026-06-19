@@ -7,7 +7,6 @@ import com.chatservice.entity.Message.MessageStatus;
 import com.chatservice.entity.Message.MessageType;
 import com.chatservice.entity.MediaAttachment.MediaType;
 import com.chatservice.entity.GroupMember.Role;
-import com.chatservice.entity.CallSession.CallStatus;
 import com.chatservice.exception.ChatExceptions.*;
 import com.chatservice.kafka.ChatKafkaProducer;
 import com.chatservice.repository.*;
@@ -40,6 +39,7 @@ private final CommunityGroupLinkRepository communityGroupLinkRepository;
     private final MessageRepository messageRepository;
     private final MessageEditRepository messageEditRepository;
     private final MessageVisibilityRepository visibilityRepository;
+    private final MessageStarRepository starRepository;
     private final MediaAttachmentRepository mediaRepository;
     private final GroupRepository groupRepository;
     private final GroupMemberRepository groupMemberRepository;
@@ -58,6 +58,7 @@ private final CommunityGroupLinkRepository communityGroupLinkRepository;
             MessageRepository messageRepository,
             MessageEditRepository messageEditRepository,
             MessageVisibilityRepository visibilityRepository,
+            MessageStarRepository starRepository,
             MediaAttachmentRepository mediaRepository,
             GroupRepository groupRepository,
             GroupMemberRepository groupMemberRepository,
@@ -76,6 +77,7 @@ private final CommunityGroupLinkRepository communityGroupLinkRepository;
         this.messageRepository = messageRepository;
         this.messageEditRepository = messageEditRepository;
         this.visibilityRepository = visibilityRepository;
+        this.starRepository = starRepository;
         this.mediaRepository = mediaRepository;
         this.groupRepository = groupRepository;
         this.groupMemberRepository = groupMemberRepository;
@@ -132,7 +134,7 @@ private final CommunityGroupLinkRepository communityGroupLinkRepository;
         message.setDeliveredAt(Instant.now());
         message = messageRepository.save(message);
 
-        MessageResponse response = toMessageResponse(message, attachment);
+        MessageResponse response = toMessageResponse(message, attachment, senderId);
         WsMessage wsMessage = buildWsMessage(response);
 
         messagingTemplate.convertAndSend("/topic/chat/" + chatId, wsMessage);
@@ -200,7 +202,7 @@ public List<ChatSummaryResponse> getChatsForUserByUsername(String username) {
         message.setDeliveredAt(Instant.now());
         message = messageRepository.save(message);
 
-        MessageResponse response = toMessageResponse(message, attachment);
+        MessageResponse response = toMessageResponse(message, attachment, senderId);
         messagingTemplate.convertAndSend("/topic/chat/" + chatId, buildWsMessage(response));
 
         Map<String, Object> ws = new HashMap<>();
@@ -250,8 +252,12 @@ public List<ChatSummaryResponse> getChatsForUser(UUID userId) {
                 .stream()
                 .collect(Collectors.toMap(MediaAttachment::getMessageId, a -> a, (a1, a2) -> a1));
 
+        // Batch-fetch which of these messages are starred by the requesting user,
+        // so we don't run one star query per message.
+        Set<UUID> starredIds = starRepository.findStarredMessageIdsByUserId(requestingUserId, messageIds);
+
         return messages.stream()
-                .map(m -> toMessageResponse(m, attachmentMap.get(m.getId())))
+                .map(m -> toMessageResponse(m, attachmentMap.get(m.getId()), requestingUserId, starredIds))
                 .collect(Collectors.toList());
     }
 
@@ -440,7 +446,7 @@ public List<ChatSummaryResponse> getChatsForUser(UUID userId) {
 
         cacheService.evictChatMessages(message.getChatId().toString());
 
-        MessageResponse response = toMessageResponse(message, null);
+        MessageResponse response = toMessageResponse(message, null, editorId);
         WsMessage wsMsg = buildWsMessage(response);
         wsMsg.setType("EDIT");
         messagingTemplate.convertAndSend("/topic/chat/" + message.getChatId(), wsMsg);
@@ -491,6 +497,156 @@ public List<ChatSummaryResponse> getChatsForUser(UUID userId) {
         log.info("Message {} deleted for everyone by {}", messageId, requesterId);
     }
 
+    // ── Star ──────────────────────────────────────────────────────────────────
+
+    @Override
+    @Transactional
+    public MessageResponse starMessage(UUID messageId, UUID userId) {
+        Message message = messageRepository.findById(messageId)
+                .orElseThrow(() -> new MessageNotFoundException("Message not found."));
+
+        if (!starRepository.existsByMessageIdAndUserId(messageId, userId)) {
+            MessageStar star = new MessageStar();
+            star.setMessageId(messageId);
+            star.setUserId(userId);
+            star.setChatId(message.getChatId());
+            starRepository.save(star);
+            log.info("Message {} starred by user {}", messageId, userId);
+        }
+
+        List<MediaAttachment> atts = mediaRepository.findByMessageId(messageId);
+        MediaAttachment attachment = atts.isEmpty() ? null : atts.get(0);
+
+        // Star is private, so this is NOT broadcast over WebSocket — only the
+        // requesting user's own client needs to know, and it already does
+        // since it triggered the action.
+        return toMessageResponse(message, attachment, userId, Set.of(messageId));
+    }
+
+    @Override
+    @Transactional
+    public MessageResponse unstarMessage(UUID messageId, UUID userId) {
+        Message message = messageRepository.findById(messageId)
+                .orElseThrow(() -> new MessageNotFoundException("Message not found."));
+
+        starRepository.deleteByMessageIdAndUserId(messageId, userId);
+        log.info("Message {} unstarred by user {}", messageId, userId);
+
+        List<MediaAttachment> atts = mediaRepository.findByMessageId(messageId);
+        MediaAttachment attachment = atts.isEmpty() ? null : atts.get(0);
+
+        return toMessageResponse(message, attachment, userId, Collections.emptySet());
+    }
+
+    @Override
+    public List<MessageResponse> getStarredMessages(UUID userId) {
+        log.info("getStarredMessages userId={}", userId);
+
+        List<MessageStar> stars = starRepository.findByUserIdOrderByStarredAtDesc(userId);
+        if (stars.isEmpty()) return Collections.emptyList();
+
+        List<UUID> messageIds = stars.stream().map(MessageStar::getMessageId).collect(Collectors.toList());
+
+        Map<UUID, Message> messageMap = messageRepository.findByIds(messageIds).stream()
+                .collect(Collectors.toMap(Message::getId, m -> m));
+
+        Map<UUID, MediaAttachment> attachmentMap = mediaRepository
+                .findByMessageIds(messageIds)
+                .stream()
+                .collect(Collectors.toMap(MediaAttachment::getMessageId, a -> a, (a1, a2) -> a1));
+
+        Set<UUID> starredIds = new HashSet<>(messageIds);
+
+        // Preserve "most recently starred first" order from the star rows,
+        // skipping any messages that have since been deleted for everyone
+        // or hidden for this user.
+        Set<UUID> hiddenIds = visibilityRepository.findHiddenMessageIdsByUserId(userId);
+
+        List<MessageResponse> result = new ArrayList<>();
+        for (MessageStar star : stars) {
+            Message m = messageMap.get(star.getMessageId());
+            if (m == null || m.isDeleted() || hiddenIds.contains(m.getId())) continue;
+            result.add(toMessageResponse(m, attachmentMap.get(m.getId()), userId, starredIds));
+        }
+        return result;
+    }
+
+    // ── Forward ─────────────────────────────────────────────────────────────
+
+    @Override
+    @Transactional
+    public List<MessageResponse> forwardMessage(UUID senderId, String senderUsername,
+            ForwardMessageRequest request) {
+
+        UUID originalId = UUID.fromString(request.getMessageId());
+        Message original = messageRepository.findById(originalId)
+                .orElseThrow(() -> new MessageNotFoundException("Message not found."));
+
+        if (original.isDeleted()) {
+            throw new UnauthorizedMessageActionException("Cannot forward a deleted message.");
+        }
+
+        List<MediaAttachment> originalAtts = mediaRepository.findByMessageId(originalId);
+        MediaAttachment originalAttachment = originalAtts.isEmpty() ? null : originalAtts.get(0);
+
+        List<MessageResponse> results = new ArrayList<>();
+
+        for (String targetChatIdStr : request.getTargetChatIds()) {
+            UUID targetChatId = UUID.fromString(targetChatIdStr);
+
+            if (!participantRepository.existsByChatIdAndUserId(targetChatId, senderId)) {
+                throw new NotChatMemberException("You are not a member of one of the target chats.");
+            }
+
+            Message forwarded = new Message();
+            forwarded.setChatId(targetChatId);
+            forwarded.setSenderId(senderId);
+            forwarded.setSenderUsername(senderUsername);
+            forwarded.setContent(original.getContent());
+            forwarded.setMessageType(original.getMessageType());
+            forwarded.setStatus(MessageStatus.SENT);
+            forwarded.setForwarded(true);
+            forwarded.setForwardedFromId(originalId);
+            // Forwarded messages intentionally do not carry over replyToId —
+            // the quoted context belonged to the original chat thread.
+            forwarded = messageRepository.save(forwarded);
+
+            MediaAttachment newAttachment = null;
+            if (originalAttachment != null) {
+                newAttachment = new MediaAttachment();
+                newAttachment.setMessageId(forwarded.getId());
+                newAttachment.setChatId(targetChatId);
+                newAttachment.setFileName(originalAttachment.getFileName());
+                newAttachment.setFileType(originalAttachment.getFileType());
+                newAttachment.setFileSizeBytes(originalAttachment.getFileSizeBytes());
+                newAttachment.setMediaType(originalAttachment.getMediaType());
+                newAttachment.setStoragePath(originalAttachment.getStoragePath());
+                newAttachment.setPayload(originalAttachment.getPayload());
+                newAttachment.setUrl(originalAttachment.getUrl());
+                newAttachment.setPreviewTitle(originalAttachment.getPreviewTitle());
+                newAttachment.setPreviewDesc(originalAttachment.getPreviewDesc());
+                newAttachment = mediaRepository.save(newAttachment);
+            }
+
+            indexMessage(forwarded, newAttachment);
+            cacheService.evictChatMessages(targetChatId.toString());
+            kafkaProducer.publishMessageSent(targetChatId.toString(), forwarded.getId().toString(), senderId.toString());
+
+            forwarded.setStatus(MessageStatus.DELIVERED);
+            forwarded.setDeliveredAt(Instant.now());
+            forwarded = messageRepository.save(forwarded);
+
+            MessageResponse response = toMessageResponse(forwarded, newAttachment, senderId);
+            messagingTemplate.convertAndSend("/topic/chat/" + targetChatId, buildWsMessage(response));
+
+            results.add(response);
+            log.info("Message {} forwarded by {} into chat {} as new message {}",
+                    originalId, senderId, targetChatId, forwarded.getId());
+        }
+
+        return results;
+    }
+
     @Override
     public List<MediaAttachmentResponse> getChatImages(UUID chatId) {
         return mediaRepository.findByChatIdAndMediaTypeOrderByUploadedAtDesc(chatId, MediaType.IMAGE)
@@ -519,7 +675,7 @@ public List<ChatSummaryResponse> getChatsForUser(UUID userId) {
                 .filter(idx -> !hiddenIds.contains(idx.getMessageId()))
                 .map(idx -> messageRepository.findById(idx.getMessageId()).map(m -> {
                     List<MediaAttachment> atts = mediaRepository.findByMessageId(m.getId());
-                    return toMessageResponse(m, atts.isEmpty() ? null : atts.get(0));
+                    return toMessageResponse(m, atts.isEmpty() ? null : atts.get(0), requestingUserId);
                 }).orElse(null))
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
@@ -538,7 +694,7 @@ public List<ChatSummaryResponse> getChatsForUser(UUID userId) {
                 .filter(idx -> !hiddenIds.contains(idx.getMessageId()))
                 .map(idx -> messageRepository.findById(idx.getMessageId()).map(m -> {
                     List<MediaAttachment> atts = mediaRepository.findByMessageId(m.getId());
-                    return toMessageResponse(m, atts.isEmpty() ? null : atts.get(0));
+                    return toMessageResponse(m, atts.isEmpty() ? null : atts.get(0), requestingUserId);
                 }).orElse(null))
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
@@ -588,7 +744,7 @@ public List<ChatSummaryResponse> getChatsForUser(UUID userId) {
                 .filter(idx -> !hiddenIds.contains(idx.getMessageId()))
                 .map(idx -> messageRepository.findById(idx.getMessageId()).map(m -> {
                     List<MediaAttachment> atts = mediaRepository.findByMessageId(m.getId());
-                    return toMessageResponse(m, atts.isEmpty() ? null : atts.get(0));
+                    return toMessageResponse(m, atts.isEmpty() ? null : atts.get(0), userId);
                 }).orElse(null))
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
@@ -709,7 +865,7 @@ public List<ChatSummaryResponse> getChatsForUser(UUID userId) {
         cacheService.evictChatMessages(chatId.toString());
         kafkaProducer.publishMessageSent(chatId.toString(), message.getId().toString(), senderId.toString());
 
-        MessageResponse response = toMessageResponse(message, att);
+        MessageResponse response = toMessageResponse(message, att, senderId);
         messagingTemplate.convertAndSend("/topic/chat/" + chatId, buildWsMessage(response));
 
         return response;
@@ -812,6 +968,7 @@ public List<ChatSummaryResponse> getChatsForUser(UUID userId) {
                 groupMemberRepository.save(m);
             });
 
+            starRepository.deleteByChatId(chatId);
             messageRepository.deleteByChatId(chatId);
             cacheService.evictChatMessages(chatId.toString());
 
@@ -1018,9 +1175,92 @@ public List<ChatSummaryResponse> getChatsForUser(UUID userId) {
         return summary;
     }
 
+    // ── Reply preview builder ───────────────────────────────────────────────
+
+    // Builds a short, human-readable preview for the quoted-reply bubble.
+    // Kept here (rather than on the entity) since it depends on MediaAttachment,
+    // which the Message entity doesn't know about.
+    private ReplyPreview buildReplyPreview(UUID replyToId) {
+        if (replyToId == null) return null;
+
+        Optional<Message> originalOpt = messageRepository.findById(replyToId);
+        ReplyPreview preview = new ReplyPreview();
+        preview.setMessageId(replyToId.toString());
+
+        if (originalOpt.isEmpty()) {
+            preview.setDeleted(true);
+            preview.setPreviewText("Original message unavailable");
+            return preview;
+        }
+
+        Message original = originalOpt.get();
+        preview.setSenderId(original.getSenderId().toString());
+        preview.setSenderUsername(original.getSenderUsername());
+        preview.setMessageType(original.getMessageType().name());
+
+        if (original.isDeleted()) {
+            preview.setDeleted(true);
+            preview.setPreviewText("This message was deleted");
+            return preview;
+        }
+
+        preview.setPreviewText(buildPreviewText(original));
+        return preview;
+    }
+
+    private String buildPreviewText(Message m) {
+        switch (m.getMessageType()) {
+            case IMAGE -> {
+                return "Photo";
+            }
+            case FILE -> {
+                List<MediaAttachment> atts = mediaRepository.findByMessageId(m.getId());
+                String fileName = atts.isEmpty() ? null : atts.get(0).getFileName();
+                return fileName != null ? fileName : "File";
+            }
+            case STICKER -> {
+                return "Sticker";
+            }
+            case CONTACT -> {
+                return "Contact card";
+            }
+            case LINK -> {
+                return m.getContent() != null ? m.getContent() : "Link";
+            }
+            case GROUP_EVENT -> {
+                return m.getContent();
+            }
+            default -> {
+                if (m.getContent() == null) return "";
+                return m.getContent().length() > 80
+                        ? m.getContent().substring(0, 80) + "…"
+                        : m.getContent();
+            }
+        }
+    }
+
     // ── Mappers ───────────────────────────────────────────────────────────────
 
+    // Convenience overload: no star lookup (used where star state is irrelevant
+    // or already known to be false, e.g. search results / forwarded copies).
     private MessageResponse toMessageResponse(Message m, MediaAttachment attachment) {
+        return toMessageResponse(m, attachment, null, Collections.emptySet());
+    }
+
+    // Convenience overload: looks up star state for a single message + user.
+    private MessageResponse toMessageResponse(Message m, MediaAttachment attachment, UUID requestingUserId) {
+        if (requestingUserId == null) {
+            return toMessageResponse(m, attachment, null, Collections.emptySet());
+        }
+        boolean starred = starRepository.existsByMessageIdAndUserId(m.getId(), requestingUserId);
+        return toMessageResponse(m, attachment, requestingUserId,
+                starred ? Set.of(m.getId()) : Collections.emptySet());
+    }
+
+    // Full mapper: starredIds is a pre-fetched batch set so callers iterating
+    // over many messages don't run one star query per message.
+    private MessageResponse toMessageResponse(Message m, MediaAttachment attachment,
+            UUID requestingUserId, Set<UUID> starredIds) {
         MessageResponse r = new MessageResponse();
         r.setId(m.getId().toString());
         r.setChatId(m.getChatId().toString());
@@ -1032,6 +1272,9 @@ public List<ChatSummaryResponse> getChatsForUser(UUID userId) {
         r.setEdited(m.isEdited());
         r.setDeleted(m.isDeleted());
         r.setReplyToId(m.getReplyToId() != null ? m.getReplyToId().toString() : null);
+        r.setReplyPreview(buildReplyPreview(m.getReplyToId()));
+        r.setForwarded(m.isForwarded());
+        r.setStarred(starredIds.contains(m.getId()));
         r.setSentAt(m.getSentAt() != null ? m.getSentAt().toString() : null);
         r.setDeliveredAt(m.getDeliveredAt() != null ? m.getDeliveredAt().toString() : null);
         r.setReadAt(m.getReadAt() != null ? m.getReadAt().toString() : null);
@@ -1113,6 +1356,9 @@ public List<ChatSummaryResponse> getChatsForUser(UUID userId) {
         ws.setEdited(r.isEdited());
         ws.setDeleted(r.isDeleted());
         ws.setReplyToId(r.getReplyToId());
+        ws.setReplyPreview(r.getReplyPreview());
+        ws.setForwarded(r.isForwarded());
+        ws.setStarred(r.isStarred());
         ws.setDate(r.getDate());
         ws.setAttachment(r.getAttachment());
         return ws;

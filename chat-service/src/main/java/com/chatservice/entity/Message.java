@@ -53,6 +53,15 @@ public class Message {
     @Column(name = "reply_to_id")
     private UUID replyToId;
 
+    // ── Forward support ─────────────────────────────────────────────────────
+    @Column(name = "is_forwarded", nullable = false)
+    private boolean isForwarded = false;
+
+    // Original message this one was forwarded from (for reference only;
+    // does not need to resolve if the original was later deleted).
+    @Column(name = "forwarded_from_id")
+    private UUID forwardedFromId;
+
     @Column(name = "sent_at", nullable = false)
     private Instant sentAt;
 
@@ -102,6 +111,10 @@ public class Message {
     public void setDeleted(boolean deleted) { isDeleted = deleted; }
     public UUID getReplyToId() { return replyToId; }
     public void setReplyToId(UUID replyToId) { this.replyToId = replyToId; }
+    public boolean isForwarded() { return isForwarded; }
+    public void setForwarded(boolean forwarded) { isForwarded = forwarded; }
+    public UUID getForwardedFromId() { return forwardedFromId; }
+    public void setForwardedFromId(UUID forwardedFromId) { this.forwardedFromId = forwardedFromId; }
     public Instant getSentAt() { return sentAt; }
     public void setSentAt(Instant sentAt) { this.sentAt = sentAt; }
     public Instant getDeliveredAt() { return deliveredAt; }

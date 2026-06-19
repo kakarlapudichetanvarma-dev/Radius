@@ -63,6 +63,20 @@ public interface ChatService {
 
     void clearChatForMe(UUID chatId, UUID userId);
 
+    // ── Star ──────────────────────────────────────────────────────────────
+    MessageResponse starMessage(UUID messageId, UUID userId);
+
+    MessageResponse unstarMessage(UUID messageId, UUID userId);
+
+    List<MessageResponse> getStarredMessages(UUID userId);
+
+    // ── Forward ───────────────────────────────────────────────────────────
+    // Forwards one message into one or more target chats. Returns the list
+    // of newly-created messages, one per target chat, in the same order as
+    // targetChatIds.
+    List<MessageResponse> forwardMessage(UUID senderId, String senderUsername,
+            ForwardMessageRequest request);
+
     // ── Media retrieval ───────────────────────────────────────────────────
     List<MediaAttachmentResponse> getChatImages(UUID chatId);
 

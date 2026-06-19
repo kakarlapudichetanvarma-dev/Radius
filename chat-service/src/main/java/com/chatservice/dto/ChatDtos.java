@@ -2,6 +2,7 @@ package com.chatservice.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 
 import java.util.List;
@@ -194,6 +195,46 @@ public static class UpdateGroupPhotoRequest {
         public void setContent(String v) { this.content = v; }
     }
 
+    // ── Forward Message Request ───────────────────────────────────────────
+    public static class ForwardMessageRequest {
+        @NotNull(message = "messageId is required")
+        private String messageId;
+
+        @NotEmpty(message = "targetChatIds must contain at least one chat")
+        private List<String> targetChatIds;
+
+        public String getMessageId() { return messageId; }
+        public void setMessageId(String v) { this.messageId = v; }
+        public List<String> getTargetChatIds() { return targetChatIds; }
+        public void setTargetChatIds(List<String> v) { this.targetChatIds = v; }
+    }
+
+    // ── Reply Preview (embedded snapshot of the message being replied to) ──
+    public static class ReplyPreview {
+        private String messageId;
+        private String senderId;
+        private String senderUsername;
+        private String messageType;
+        // Short preview text: message content for TEXT, file name for FILE,
+        // "Photo" for IMAGE, etc. — built server-side so the frontend never
+        // needs a second lookup just to render the quoted bubble.
+        private String previewText;
+        private boolean deleted;
+
+        public String getMessageId() { return messageId; }
+        public void setMessageId(String v) { this.messageId = v; }
+        public String getSenderId() { return senderId; }
+        public void setSenderId(String v) { this.senderId = v; }
+        public String getSenderUsername() { return senderUsername; }
+        public void setSenderUsername(String v) { this.senderUsername = v; }
+        public String getMessageType() { return messageType; }
+        public void setMessageType(String v) { this.messageType = v; }
+        public String getPreviewText() { return previewText; }
+        public void setPreviewText(String v) { this.previewText = v; }
+        public boolean isDeleted() { return deleted; }
+        public void setDeleted(boolean v) { this.deleted = v; }
+    }
+
     // ── Message Response ──────────────────────────────────────────────────
     public static class MessageResponse {
         private String id;
@@ -206,6 +247,9 @@ public static class UpdateGroupPhotoRequest {
         private boolean isEdited;
         private boolean isDeleted;
         private String replyToId;
+        private ReplyPreview replyPreview;
+        private boolean isForwarded;
+        private boolean starred;
         private String sentAt;
         private String deliveredAt;
         private String readAt;
@@ -236,6 +280,12 @@ public static class UpdateGroupPhotoRequest {
         public void setDeleted(boolean v) { isDeleted = v; }
         public String getReplyToId() { return replyToId; }
         public void setReplyToId(String v) { this.replyToId = v; }
+        public ReplyPreview getReplyPreview() { return replyPreview; }
+        public void setReplyPreview(ReplyPreview v) { this.replyPreview = v; }
+        public boolean isForwarded() { return isForwarded; }
+        public void setForwarded(boolean v) { this.isForwarded = v; }
+        public boolean isStarred() { return starred; }
+        public void setStarred(boolean v) { this.starred = v; }
         public String getSentAt() { return sentAt; }
         public void setSentAt(String v) { this.sentAt = v; }
         public String getDeliveredAt() { return deliveredAt; }
@@ -514,6 +564,9 @@ public static class UpdateGroupPhotoRequest {
         // Added: isDeleted, replyToId, date (req DTO fix)
         private boolean isDeleted;
         private String replyToId;
+        private ReplyPreview replyPreview;
+        private boolean isForwarded;
+        private boolean starred;
         private String date;
         private MediaAttachmentResponse attachment;
 
@@ -541,6 +594,12 @@ public static class UpdateGroupPhotoRequest {
         public void setDeleted(boolean v) { isDeleted = v; }
         public String getReplyToId() { return replyToId; }
         public void setReplyToId(String v) { this.replyToId = v; }
+        public ReplyPreview getReplyPreview() { return replyPreview; }
+        public void setReplyPreview(ReplyPreview v) { this.replyPreview = v; }
+        public boolean isForwarded() { return isForwarded; }
+        public void setForwarded(boolean v) { this.isForwarded = v; }
+        public boolean isStarred() { return starred; }
+        public void setStarred(boolean v) { this.starred = v; }
         public String getDate() { return date; }
         public void setDate(String v) { this.date = v; }
         public MediaAttachmentResponse getAttachment() { return attachment; }
@@ -601,81 +660,5 @@ public static class UpdateGroupPhotoRequest {
         public void setWallpaperColor(String v) { this.wallpaperColor = v; }
         public String getUpdatedAt() { return updatedAt; }
         public void setUpdatedAt(String v) { this.updatedAt = v; }
-    }
-
-    // ── WebRTC Signal ─────────────────────────────────────────────────────
-    public static class WebRtcSignal {
-        private String type;
-        private String sessionId;
-        private String chatId;
-        private String callerId;
-        private String calleeId;
-        private String fromUserId;
-        private String callType;
-        private String sdp;
-        private String candidate;
-        private String sdpMid;
-        private Integer sdpMLineIndex;
-        private Long durationSeconds;
-
-        public String getType() { return type; }
-        public void setType(String v) { this.type = v; }
-        public String getSessionId() { return sessionId; }
-        public void setSessionId(String v) { this.sessionId = v; }
-        public String getChatId() { return chatId; }
-        public void setChatId(String v) { this.chatId = v; }
-        public String getCallerId() { return callerId; }
-        public void setCallerId(String v) { this.callerId = v; }
-        public String getCalleeId() { return calleeId; }
-        public void setCalleeId(String v) { this.calleeId = v; }
-        public String getFromUserId() { return fromUserId; }
-        public void setFromUserId(String v) { this.fromUserId = v; }
-        public String getCallType() { return callType; }
-        public void setCallType(String v) { this.callType = v; }
-        public String getSdp() { return sdp; }
-        public void setSdp(String v) { this.sdp = v; }
-        public String getCandidate() { return candidate; }
-        public void setCandidate(String v) { this.candidate = v; }
-        public String getSdpMid() { return sdpMid; }
-        public void setSdpMid(String v) { this.sdpMid = v; }
-        public Integer getSdpMLineIndex() { return sdpMLineIndex; }
-        public void setSdpMLineIndex(Integer v) { this.sdpMLineIndex = v; }
-        public Long getDurationSeconds() { return durationSeconds; }
-        public void setDurationSeconds(Long v) { this.durationSeconds = v; }
-    }
-
-    // ── Call Session Response ─────────────────────────────────────────────
-    public static class CallSessionResponse {
-        private String sessionId;
-        private String chatId;
-        private String callerId;
-        private String calleeId;
-        private String callType;
-        private String callStatus;
-        private String startedAt;
-        private String answeredAt;
-        private String endedAt;
-        private Long durationSeconds;
-
-        public String getSessionId() { return sessionId; }
-        public void setSessionId(String v) { this.sessionId = v; }
-        public String getChatId() { return chatId; }
-        public void setChatId(String v) { this.chatId = v; }
-        public String getCallerId() { return callerId; }
-        public void setCallerId(String v) { this.callerId = v; }
-        public String getCalleeId() { return calleeId; }
-        public void setCalleeId(String v) { this.calleeId = v; }
-        public String getCallType() { return callType; }
-        public void setCallType(String v) { this.callType = v; }
-        public String getCallStatus() { return callStatus; }
-        public void setCallStatus(String v) { this.callStatus = v; }
-        public String getStartedAt() { return startedAt; }
-        public void setStartedAt(String v) { this.startedAt = v; }
-        public String getAnsweredAt() { return answeredAt; }
-        public void setAnsweredAt(String v) { this.answeredAt = v; }
-        public String getEndedAt() { return endedAt; }
-        public void setEndedAt(String v) { this.endedAt = v; }
-        public Long getDurationSeconds() { return durationSeconds; }
-        public void setDurationSeconds(Long v) { this.durationSeconds = v; }
     }
 }

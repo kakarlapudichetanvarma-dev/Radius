@@ -197,6 +197,48 @@ public class ChatController {
         return ok("Message deleted for everyone.", null);
     }
 
+    // ── Star ─────────────────────────────────────────────────────────────────
+
+    @PostMapping("/messages/{messageId}/star")
+    public ResponseEntity<ApiResponse> starMessage(
+            @PathVariable UUID messageId, Authentication auth) {
+        UUID userId = uuid(auth);
+        log.info("POST /messages/{}/star user={}", messageId, userId);
+        MessageResponse msg = chatService.starMessage(messageId, userId);
+        return ok("Message starred.", msg);
+    }
+
+    @DeleteMapping("/messages/{messageId}/star")
+    public ResponseEntity<ApiResponse> unstarMessage(
+            @PathVariable UUID messageId, Authentication auth) {
+        UUID userId = uuid(auth);
+        log.info("DELETE /messages/{}/star user={}", messageId, userId);
+        MessageResponse msg = chatService.unstarMessage(messageId, userId);
+        return ok("Message unstarred.", msg);
+    }
+
+    @GetMapping("/messages/starred")
+    public ResponseEntity<ApiResponse> getStarredMessages(Authentication auth) {
+        UUID userId = uuid(auth);
+        log.info("GET /messages/starred user={}", userId);
+        List<MessageResponse> starred = chatService.getStarredMessages(userId);
+        return ok("Starred messages fetched.", starred);
+    }
+
+    // ── Forward ──────────────────────────────────────────────────────────────
+
+    @PostMapping("/messages/forward")
+    public ResponseEntity<ApiResponse> forwardMessage(
+            @Valid @RequestBody ForwardMessageRequest request,
+            Authentication auth,
+            @RequestAttribute(required = false) String username) {
+        UUID senderId = uuid(auth);
+        log.info("POST /messages/forward sender={} messageId={} targets={}",
+                senderId, request.getMessageId(), request.getTargetChatIds());
+        List<MessageResponse> forwarded = chatService.forwardMessage(senderId, username, request);
+        return created("Message forwarded.", forwarded);
+    }
+
     @GetMapping("/chats/{chatId}/images")
     public ResponseEntity<ApiResponse> getChatImages(@PathVariable UUID chatId) {
         return ok("Images fetched.", chatService.getChatImages(chatId));
