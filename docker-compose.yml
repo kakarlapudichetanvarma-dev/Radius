@@ -1,0 +1,260 @@
+# ══════════════════════════════════════════════════════════════════════
+#  docker-compose.yml – Chat ONN full stack
+# ══════════════════════════════════════════════════════════════════════
+
+services:
+
+  # ── Eureka Discovery Server ─────────────────────────────────────────
+  eureka-server:
+    build:
+      context: ./eureka-server
+      dockerfile: Dockerfile
+    container_name: eureka-server
+    ports:
+      - "8761:8761"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_INSTANCE_HOSTNAME=eureka-server
+      - JAVA_OPTS=-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0
+    volumes:
+      - discovery-logs:/app/logs
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8761/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - chatapp-network
+    labels:
+      - "app=chatapp"
+      - "component=discovery"
+
+  # ── Postgres for auth-service ────────────────────────────────────────
+  auth-db:
+    image: postgres:16-alpine
+    container_name: auth-db
+    environment:
+      - POSTGRES_DB=authdb
+      - POSTGRES_USER=authuser
+      - POSTGRES_PASSWORD=authpass
+    ports:
+      - "5433:5432"
+    volumes:
+      - auth-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U authuser -d authdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - chatapp-network
+
+  # ── Postgres for user-service ────────────────────────────────────────
+  user-db:
+    image: postgres:16-alpine
+    container_name: user-db
+    environment:
+      - POSTGRES_DB=userdb
+      - POSTGRES_USER=useruser
+      - POSTGRES_PASSWORD=userpass
+    ports:
+      - "5434:5432"
+    volumes:
+      - user-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U useruser -d userdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - chatapp-network
+
+  # ── Postgres for chat-service ────────────────────────────────────────
+  chat-db:
+    image: postgres:16-alpine
+    container_name: chat-db
+    environment:
+      - POSTGRES_DB=chatdb
+      - POSTGRES_USER=chatuser
+      - POSTGRES_PASSWORD=chatpass
+    ports:
+      - "5435:5432"
+    volumes:
+      - chat-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chatuser -d chatdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - chatapp-network
+
+  # ── Auth Service ──────────────────────────────────────────────────────
+  auth-service:
+    build:
+      context: ./auth-service
+      dockerfile: Dockerfile
+    container_name: auth-service
+    ports:
+      - "8083:8083"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://auth-db:5432/authdb
+      - SPRING_DATASOURCE_USERNAME=authuser
+      - SPRING_DATASOURCE_PASSWORD=authpass
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka
+      - JAVA_OPTS=-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      auth-db:
+        condition: service_healthy
+    volumes:
+      - auth-logs:/app/logs
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8083/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - chatapp-network
+    labels:
+      - "app=chatapp"
+      - "component=auth"
+
+  # ── User Service ──────────────────────────────────────────────────────
+  user-service:
+    build:
+      context: ./user-service
+      dockerfile: Dockerfile
+    container_name: user-service
+    ports:
+      - "8082:8082"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://user-db:5432/userdb
+      - SPRING_DATASOURCE_USERNAME=useruser
+      - SPRING_DATASOURCE_PASSWORD=userpass
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka
+      - JAVA_OPTS=-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      user-db:
+        condition: service_healthy
+    volumes:
+      - user-logs:/app/logs
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8082/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - chatapp-network
+    labels:
+      - "app=chatapp"
+      - "component=user"
+
+  # ── Chat Service ──────────────────────────────────────────────────────
+  chat-service:
+    build:
+      context: ./chat-service
+      dockerfile: Dockerfile
+    container_name: chat-service
+    ports:
+      - "8084:8084"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://chat-db:5432/chatdb
+      - SPRING_DATASOURCE_USERNAME=chatuser
+      - SPRING_DATASOURCE_PASSWORD=chatpass
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka
+      - JAVA_OPTS=-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      chat-db:
+        condition: service_healthy
+    volumes:
+      - chat-logs:/app/logs
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8084/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - chatapp-network
+    labels:
+      - "app=chatapp"
+      - "component=chat"
+
+  # ── API Gateway ───────────────────────────────────────────────────────
+  api-gateway:
+    build:
+      context: ./Api-Gateway
+      dockerfile: Dockerfile
+    container_name: api-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka
+      - JAVA_OPTS=-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+      user-service:
+        condition: service_started
+      chat-service:
+        condition: service_started
+    volumes:
+      - gateway-logs:/app/logs
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - chatapp-network
+    labels:
+      - "app=chatapp"
+      - "component=gateway"
+
+# ── Named volumes ────────────────────────────────────────────────────
+volumes:
+  discovery-logs:
+    driver: local
+  auth-logs:
+    driver: local
+  user-logs:
+    driver: local
+  chat-logs:
+    driver: local
+  gateway-logs:
+    driver: local
+  auth-db-data:
+    driver: local
+  user-db-data:
+    driver: local
+  chat-db-data:
+    driver: local
+
+# ── Networks ─────────────────────────────────────────────────────────
+networks:
+  chatapp-network:
+    driver: bridge
