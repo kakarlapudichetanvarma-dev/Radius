@@ -26,7 +26,7 @@ RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
 WORKDIR /app
 
-COPY --from=builder /build/target/Api-Gateway-*.jar app.jar
+COPY --from=builder /build/target/api-gateway-*.jar app.jar
 
 RUN mkdir -p logs && chown -R appuser:appgroup /app
 

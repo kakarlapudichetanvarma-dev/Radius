@@ -109,6 +109,9 @@ services:
       - SPRING_DATASOURCE_PASSWORD=authpass
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka
       - JAVA_OPTS=-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
     depends_on:
       eureka-server:
         condition: service_healthy
@@ -179,6 +182,10 @@ services:
       - SPRING_DATASOURCE_PASSWORD=chatpass
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka
       - JAVA_OPTS=-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - AUTH_SERVICE_URL=http://api-gateway:8080
     depends_on:
       eureka-server:
         condition: service_healthy
@@ -211,6 +218,8 @@ services:
       - SPRING_PROFILES_ACTIVE=docker
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka
       - JAVA_OPTS=-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
     depends_on:
       eureka-server:
         condition: service_healthy
@@ -234,6 +243,27 @@ services:
     labels:
       - "app=chatapp"
       - "component=gateway"
+
+  # ── Frontend (RADIUS-FRONT) ──────────────────────────────────────────
+  frontend:
+    build:
+      context: /home/kernex/radius-front/Radius-front
+      dockerfile: Dockerfile
+    container_name: radius-frontend
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8080
+      - VITE_WS_URL=ws://localhost:8080
+    depends_on:
+      api-gateway:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - chatapp-network
+    labels:
+      - "app=chatapp"
+      - "component=frontend"
 
 # ── Named volumes ────────────────────────────────────────────────────
 volumes:

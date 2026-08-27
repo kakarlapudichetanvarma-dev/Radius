@@ -1,106 +1,36 @@
-2026-06-18 09:04:43.108 INFO  [discovery-service] [main] c.c.d.EurekaServerApplication : Starting EurekaServerApplication using Java 17.0.17 with PID 17864 (C:\Users\Administrator\Desktop\Radius-git\Radius\eureka-server\target\classes started by Administrator in C:\Users\Administrator\Desktop\Radius-git\Radius\eureka-server)
-2026-06-18 09:04:43.116 DEBUG [discovery-service] [main] c.c.d.EurekaServerApplication : Running with Spring Boot v3.3.0, Spring v6.1.8
-2026-06-18 09:04:43.123 INFO  [discovery-service] [main] c.c.d.EurekaServerApplication : No active profile set, falling back to 1 default profile: "default"
-2026-06-18 09:04:45.003 INFO  [discovery-service] [main] o.s.cloud.context.scope.GenericScope : BeanFactory id=af6e0d5b-3405-3037-9a4d-324e040a8666
-2026-06-18 09:04:45.080 WARN  [discovery-service] [main] o.s.c.s.PostProcessorRegistrationDelegate$BeanPostProcessorChecker : Bean 'org.springframework.cloud.client.loadbalancer.LoadBalancerAutoConfiguration$DeferringLoadBalancerInterceptorConfig' of type [org.springframework.cloud.client.loadbalancer.LoadBalancerAutoConfiguration$DeferringLoadBalancerInterceptorConfig] is not eligible for getting processed by all BeanPostProcessors (for example: not eligible for auto-proxying). The currently created BeanPostProcessor [lbRestClientPostProcessor] is declared through a non-static factory method on that class; consider declaring it as static instead.
-2026-06-18 09:04:45.083 WARN  [discovery-service] [main] o.s.c.s.PostProcessorRegistrationDelegate$BeanPostProcessorChecker : Bean 'deferringLoadBalancerInterceptor' of type [org.springframework.cloud.client.loadbalancer.DeferringLoadBalancerInterceptor] is not eligible for getting processed by all BeanPostProcessors (for example: not eligible for auto-proxying). Is this bean getting eagerly injected into a currently created BeanPostProcessor [lbRestClientPostProcessor]? Check the corresponding BeanPostProcessor declaration and its dependencies.
-2026-06-18 09:04:45.383 INFO  [discovery-service] [main] o.s.b.w.e.tomcat.TomcatWebServer : Tomcat initialized with port 8761 (http)
-2026-06-18 09:04:45.402 INFO  [discovery-service] [main] o.a.catalina.core.StandardService : Starting service [Tomcat]
-2026-06-18 09:04:45.402 INFO  [discovery-service] [main] o.a.catalina.core.StandardEngine : Starting Servlet engine: [Apache Tomcat/10.1.24]
-2026-06-18 09:04:45.502 INFO  [discovery-service] [main] o.a.c.c.C.[Tomcat].[localhost].[/] : Initializing Spring embedded WebApplicationContext
-2026-06-18 09:04:45.503 INFO  [discovery-service] [main] o.s.b.w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 2320 ms
-2026-06-18 09:04:47.867 WARN  [discovery-service] [main] o.s.c.l.c.LoadBalancerCacheAutoConfiguration$LoadBalancerCaffeineWarnLogger : Spring Cloud LoadBalancer is currently working with the default cache. While this cache implementation is useful for development and tests, it's recommended to use Caffeine cache in production.You can switch to using Caffeine cache, by adding it and org.springframework.cache.caffeine.CaffeineCacheManager to the classpath.
-2026-06-18 09:04:47.895 INFO  [discovery-service] [main] o.s.c.n.eureka.InstanceInfoFactory : Setting initial instance status as: STARTING
-2026-06-18 09:04:48.001 WARN  [discovery-service] [main] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-06-18 09:04:48.089 INFO  [discovery-service] [main] o.s.b.a.e.web.EndpointLinksResolver : Exposing 5 endpoints beneath base path '/actuator'
-2026-06-18 09:04:48.144 INFO  [discovery-service] [main] o.s.c.n.e.s.EurekaServiceRegistry : Registering application DISCOVERY-SERVICE with eureka with status UP
-2026-06-18 09:04:48.163 INFO  [discovery-service] [Thread-9] o.s.c.n.e.s.EurekaServerBootstrap : isAws returned false
-2026-06-18 09:04:48.164 INFO  [discovery-service] [Thread-9] o.s.c.n.e.s.EurekaServerBootstrap : Initialized server context
-2026-06-18 09:04:48.180 INFO  [discovery-service] [Thread-9] o.s.c.n.e.s.EurekaServerInitializerConfiguration : Started Eureka Server
-2026-06-18 09:04:48.185 INFO  [discovery-service] [main] o.s.b.w.e.tomcat.TomcatWebServer : Tomcat started on port 8761 (http) with context path '/'
-2026-06-18 09:04:48.186 INFO  [discovery-service] [main] o.s.c.n.e.s.EurekaAutoServiceRegistration : Updating port to 8761
-2026-06-18 09:04:48.251 INFO  [discovery-service] [main] c.c.d.EurekaServerApplication : Started EurekaServerApplication in 6.196 seconds (process running for 7.618)
-2026-06-18 09:04:48.260 INFO  [discovery-service] [main] c.c.d.EurekaServerApplication : =======================================================
-2026-06-18 09:04:48.261 INFO  [discovery-service] [main] c.c.d.EurekaServerApplication :   Eureka Discovery Server started successfully
-2026-06-18 09:04:48.261 INFO  [discovery-service] [main] c.c.d.EurekaServerApplication :   Dashboard ? http://localhost:8761
-2026-06-18 09:04:48.262 INFO  [discovery-service] [main] c.c.d.EurekaServerApplication :   Health   ? http://localhost:8761/actuator/health
-2026-06-18 09:04:48.262 INFO  [discovery-service] [main] c.c.d.EurekaServerApplication : =======================================================
-2026-06-18 09:04:48.767 INFO  [discovery-service] [http-nio-8761-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/] : Initializing Spring DispatcherServlet 'dispatcherServlet'
-2026-06-18 09:04:48.768 INFO  [discovery-service] [http-nio-8761-exec-1] o.s.web.servlet.DispatcherServlet : Initializing Servlet 'dispatcherServlet'
-2026-06-18 09:04:48.769 INFO  [discovery-service] [http-nio-8761-exec-1] o.s.web.servlet.DispatcherServlet : Completed initialization in 1 ms
-2026-06-18 09:14:48.003 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-06-18 09:19:39.165 WARN  [discovery-service] [Eureka-EvictionTimer] c.n.e.r.AbstractInstanceRegistry : DS: Registry: expired lease for CHAT-SERVICE/chat-service:8084
-2026-06-18 09:24:48.004 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-06-18 09:34:48.005 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-06-18 09:44:48.010 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-06-18 09:54:48.028 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-06-18 10:04:48.043 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-06-18 10:14:48.058 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-06-18 10:24:48.062 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-06-18 10:34:48.063 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-06-18 10:44:48.077 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-06-18 13:22:43.235 INFO  [discovery-service] [main] c.c.d.EurekaServerApplication : Starting EurekaServerApplication using Java 17.0.18 with PID 29504 (C:\Users\ADMIN\Desktop\Radius\Radius\eureka-server\target\classes started by ADMIN in C:\Users\ADMIN\Desktop\Radius\Radius\eureka-server)
-2026-06-18 13:22:43.235 DEBUG [discovery-service] [main] c.c.d.EurekaServerApplication : Running with Spring Boot v3.3.0, Spring v6.1.8
-2026-06-18 13:22:43.235 INFO  [discovery-service] [main] c.c.d.EurekaServerApplication : No active profile set, falling back to 1 default profile: "default"
-2026-06-18 13:22:44.193 INFO  [discovery-service] [main] o.s.cloud.context.scope.GenericScope : BeanFactory id=af6e0d5b-3405-3037-9a4d-324e040a8666
-2026-06-18 13:22:44.233 WARN  [discovery-service] [main] o.s.c.s.PostProcessorRegistrationDelegate$BeanPostProcessorChecker : Bean 'org.springframework.cloud.client.loadbalancer.LoadBalancerAutoConfiguration$DeferringLoadBalancerInterceptorConfig' of type [org.springframework.cloud.client.loadbalancer.LoadBalancerAutoConfiguration$DeferringLoadBalancerInterceptorConfig] is not eligible for getting processed by all BeanPostProcessors (for example: not eligible for auto-proxying). The currently created BeanPostProcessor [lbRestClientPostProcessor] is declared through a non-static factory method on that class; consider declaring it as static instead.
-2026-06-18 13:22:44.248 WARN  [discovery-service] [main] o.s.c.s.PostProcessorRegistrationDelegate$BeanPostProcessorChecker : Bean 'deferringLoadBalancerInterceptor' of type [org.springframework.cloud.client.loadbalancer.DeferringLoadBalancerInterceptor] is not eligible for getting processed by all BeanPostProcessors (for example: not eligible for auto-proxying). Is this bean getting eagerly injected into a currently created BeanPostProcessor [lbRestClientPostProcessor]? Check the corresponding BeanPostProcessor declaration and its dependencies.
-2026-06-18 13:22:44.507 INFO  [discovery-service] [main] o.s.b.w.e.tomcat.TomcatWebServer : Tomcat initialized with port 8761 (http)
-2026-06-18 13:22:44.518 INFO  [discovery-service] [main] o.a.catalina.core.StandardService : Starting service [Tomcat]
-2026-06-18 13:22:44.520 INFO  [discovery-service] [main] o.a.catalina.core.StandardEngine : Starting Servlet engine: [Apache Tomcat/10.1.24]
-2026-06-18 13:22:44.592 INFO  [discovery-service] [main] o.a.c.c.C.[Tomcat].[localhost].[/] : Initializing Spring embedded WebApplicationContext
-2026-06-18 13:22:44.592 INFO  [discovery-service] [main] o.s.b.w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 1306 ms
-2026-06-18 13:22:46.512 WARN  [discovery-service] [main] o.s.c.l.c.LoadBalancerCacheAutoConfiguration$LoadBalancerCaffeineWarnLogger : Spring Cloud LoadBalancer is currently working with the default cache. While this cache implementation is useful for development and tests, it's recommended to use Caffeine cache in production.You can switch to using Caffeine cache, by adding it and org.springframework.cache.caffeine.CaffeineCacheManager to the classpath.
-2026-06-18 13:22:46.525 INFO  [discovery-service] [main] o.s.c.n.eureka.InstanceInfoFactory : Setting initial instance status as: STARTING
-2026-06-18 13:22:46.602 WARN  [discovery-service] [main] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-06-18 13:22:46.668 INFO  [discovery-service] [main] o.s.b.a.e.web.EndpointLinksResolver : Exposing 5 endpoints beneath base path '/actuator'
-2026-06-18 13:22:46.707 INFO  [discovery-service] [main] o.s.c.n.e.s.EurekaServiceRegistry : Registering application DISCOVERY-SERVICE with eureka with status UP
-2026-06-18 13:22:46.715 INFO  [discovery-service] [Thread-9] o.s.c.n.e.s.EurekaServerBootstrap : isAws returned false
-2026-06-18 13:22:46.716 INFO  [discovery-service] [Thread-9] o.s.c.n.e.s.EurekaServerBootstrap : Initialized server context
-2026-06-18 13:22:46.724 INFO  [discovery-service] [Thread-9] o.s.c.n.e.s.EurekaServerInitializerConfiguration : Started Eureka Server
-2026-06-18 13:22:46.762 INFO  [discovery-service] [main] o.s.b.w.e.tomcat.TomcatWebServer : Tomcat started on port 8761 (http) with context path '/'
-2026-06-18 13:22:46.763 INFO  [discovery-service] [main] o.s.c.n.e.s.EurekaAutoServiceRegistration : Updating port to 8761
-2026-06-18 13:22:46.908 INFO  [discovery-service] [main] c.c.d.EurekaServerApplication : Started EurekaServerApplication in 4.319 seconds (process running for 4.767)
-2026-06-18 13:22:46.917 INFO  [discovery-service] [main] c.c.d.EurekaServerApplication : =======================================================
-2026-06-18 13:22:46.918 INFO  [discovery-service] [main] c.c.d.EurekaServerApplication :   Eureka Discovery Server started successfully
-2026-06-18 13:22:46.918 INFO  [discovery-service] [main] c.c.d.EurekaServerApplication :   Dashboard ? http://localhost:8761
-2026-06-18 13:22:46.919 INFO  [discovery-service] [main] c.c.d.EurekaServerApplication :   Health   ? http://localhost:8761/actuator/health
-2026-06-18 13:22:46.919 INFO  [discovery-service] [main] c.c.d.EurekaServerApplication : =======================================================
-2026-06-18 13:22:58.425 INFO  [discovery-service] [http-nio-8761-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/] : Initializing Spring DispatcherServlet 'dispatcherServlet'
-2026-06-18 13:22:58.427 INFO  [discovery-service] [http-nio-8761-exec-1] o.s.web.servlet.DispatcherServlet : Initializing Servlet 'dispatcherServlet'
-2026-06-18 13:22:58.429 INFO  [discovery-service] [http-nio-8761-exec-1] o.s.web.servlet.DispatcherServlet : Completed initialization in 2 ms
-2026-06-18 13:32:46.620 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-06-18 16:11:38.437 INFO  [discovery-service] [main] c.c.d.EurekaServerApplication : Starting EurekaServerApplication using Java 17.0.18 with PID 17192 (C:\Users\ADMIN\Desktop\Radius\Radius\eureka-server\target\classes started by ADMIN in C:\Users\ADMIN\Desktop\Radius\Radius\eureka-server)
-2026-06-18 16:11:38.439 DEBUG [discovery-service] [main] c.c.d.EurekaServerApplication : Running with Spring Boot v3.3.0, Spring v6.1.8
-2026-06-18 16:11:38.439 INFO  [discovery-service] [main] c.c.d.EurekaServerApplication : No active profile set, falling back to 1 default profile: "default"
-2026-06-18 16:11:39.312 INFO  [discovery-service] [main] o.s.cloud.context.scope.GenericScope : BeanFactory id=af6e0d5b-3405-3037-9a4d-324e040a8666
-2026-06-18 16:11:39.354 WARN  [discovery-service] [main] o.s.c.s.PostProcessorRegistrationDelegate$BeanPostProcessorChecker : Bean 'org.springframework.cloud.client.loadbalancer.LoadBalancerAutoConfiguration$DeferringLoadBalancerInterceptorConfig' of type [org.springframework.cloud.client.loadbalancer.LoadBalancerAutoConfiguration$DeferringLoadBalancerInterceptorConfig] is not eligible for getting processed by all BeanPostProcessors (for example: not eligible for auto-proxying). The currently created BeanPostProcessor [lbRestClientPostProcessor] is declared through a non-static factory method on that class; consider declaring it as static instead.
-2026-06-18 16:11:39.357 WARN  [discovery-service] [main] o.s.c.s.PostProcessorRegistrationDelegate$BeanPostProcessorChecker : Bean 'deferringLoadBalancerInterceptor' of type [org.springframework.cloud.client.loadbalancer.DeferringLoadBalancerInterceptor] is not eligible for getting processed by all BeanPostProcessors (for example: not eligible for auto-proxying). Is this bean getting eagerly injected into a currently created BeanPostProcessor [lbRestClientPostProcessor]? Check the corresponding BeanPostProcessor declaration and its dependencies.
-2026-06-18 16:11:39.603 INFO  [discovery-service] [main] o.s.b.w.e.tomcat.TomcatWebServer : Tomcat initialized with port 8761 (http)
-2026-06-18 16:11:39.614 INFO  [discovery-service] [main] o.a.catalina.core.StandardService : Starting service [Tomcat]
-2026-06-18 16:11:39.615 INFO  [discovery-service] [main] o.a.catalina.core.StandardEngine : Starting Servlet engine: [Apache Tomcat/10.1.24]
-2026-06-18 16:11:39.794 INFO  [discovery-service] [main] o.a.c.c.C.[Tomcat].[localhost].[/] : Initializing Spring embedded WebApplicationContext
-2026-06-18 16:11:39.794 INFO  [discovery-service] [main] o.s.b.w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 1308 ms
-2026-06-18 16:11:41.448 WARN  [discovery-service] [main] o.s.c.l.c.LoadBalancerCacheAutoConfiguration$LoadBalancerCaffeineWarnLogger : Spring Cloud LoadBalancer is currently working with the default cache. While this cache implementation is useful for development and tests, it's recommended to use Caffeine cache in production.You can switch to using Caffeine cache, by adding it and org.springframework.cache.caffeine.CaffeineCacheManager to the classpath.
-2026-06-18 16:11:41.458 INFO  [discovery-service] [main] o.s.c.n.eureka.InstanceInfoFactory : Setting initial instance status as: STARTING
-2026-06-18 16:11:41.563 WARN  [discovery-service] [main] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-06-18 16:11:41.620 INFO  [discovery-service] [main] o.s.b.a.e.web.EndpointLinksResolver : Exposing 5 endpoints beneath base path '/actuator'
-2026-06-18 16:11:41.656 INFO  [discovery-service] [main] o.s.c.n.e.s.EurekaServiceRegistry : Registering application DISCOVERY-SERVICE with eureka with status UP
-2026-06-18 16:11:41.665 INFO  [discovery-service] [Thread-9] o.s.c.n.e.s.EurekaServerBootstrap : isAws returned false
-2026-06-18 16:11:41.665 INFO  [discovery-service] [Thread-9] o.s.c.n.e.s.EurekaServerBootstrap : Initialized server context
-2026-06-18 16:11:41.672 INFO  [discovery-service] [Thread-9] o.s.c.n.e.s.EurekaServerInitializerConfiguration : Started Eureka Server
-2026-06-18 16:11:41.685 INFO  [discovery-service] [main] o.s.b.w.e.tomcat.TomcatWebServer : Tomcat started on port 8761 (http) with context path '/'
-2026-06-18 16:11:41.686 INFO  [discovery-service] [main] o.s.c.n.e.s.EurekaAutoServiceRegistration : Updating port to 8761
-2026-06-18 16:11:41.822 INFO  [discovery-service] [main] c.c.d.EurekaServerApplication : Started EurekaServerApplication in 4.063 seconds (process running for 4.435)
-2026-06-18 16:11:41.832 INFO  [discovery-service] [main] c.c.d.EurekaServerApplication : =======================================================
-2026-06-18 16:11:41.832 INFO  [discovery-service] [main] c.c.d.EurekaServerApplication :   Eureka Discovery Server started successfully
-2026-06-18 16:11:41.833 INFO  [discovery-service] [main] c.c.d.EurekaServerApplication :   Dashboard ? http://localhost:8761
-2026-06-18 16:11:41.833 INFO  [discovery-service] [main] c.c.d.EurekaServerApplication :   Health   ? http://localhost:8761/actuator/health
-2026-06-18 16:11:41.833 INFO  [discovery-service] [main] c.c.d.EurekaServerApplication : =======================================================
-2026-06-18 16:11:52.919 INFO  [discovery-service] [http-nio-8761-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/] : Initializing Spring DispatcherServlet 'dispatcherServlet'
-2026-06-18 16:11:52.919 INFO  [discovery-service] [http-nio-8761-exec-1] o.s.web.servlet.DispatcherServlet : Initializing Servlet 'dispatcherServlet'
-2026-06-18 16:11:52.920 INFO  [discovery-service] [http-nio-8761-exec-1] o.s.web.servlet.DispatcherServlet : Completed initialization in 0 ms
-2026-06-18 16:21:41.588 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-06-18 16:31:41.604 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-06-18 16:41:41.612 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
-2026-06-18 16:51:41.621 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
+2026-08-27 09:52:49.380 INFO  [discovery-service] [main] c.c.d.EurekaServerApplication : Starting EurekaServerApplication using Java 21.0.12 with PID 75268 (/home/kernex/Radius_back/Radius/eureka-server/target/classes started by kernex in /home/kernex/Radius_back/Radius/eureka-server)
+2026-08-27 09:52:49.389 DEBUG [discovery-service] [main] c.c.d.EurekaServerApplication : Running with Spring Boot v3.3.0, Spring v6.1.8
+2026-08-27 09:52:49.390 INFO  [discovery-service] [main] c.c.d.EurekaServerApplication : No active profile set, falling back to 1 default profile: "default"
+2026-08-27 09:52:50.417 INFO  [discovery-service] [main] o.s.cloud.context.scope.GenericScope : BeanFactory id=af6e0d5b-3405-3037-9a4d-324e040a8666
+2026-08-27 09:52:50.493 WARN  [discovery-service] [main] o.s.c.s.PostProcessorRegistrationDelegate$BeanPostProcessorChecker : Bean 'org.springframework.cloud.client.loadbalancer.LoadBalancerAutoConfiguration$DeferringLoadBalancerInterceptorConfig' of type [org.springframework.cloud.client.loadbalancer.LoadBalancerAutoConfiguration$DeferringLoadBalancerInterceptorConfig] is not eligible for getting processed by all BeanPostProcessors (for example: not eligible for auto-proxying). The currently created BeanPostProcessor [lbRestClientPostProcessor] is declared through a non-static factory method on that class; consider declaring it as static instead.
+2026-08-27 09:52:50.498 WARN  [discovery-service] [main] o.s.c.s.PostProcessorRegistrationDelegate$BeanPostProcessorChecker : Bean 'deferringLoadBalancerInterceptor' of type [org.springframework.cloud.client.loadbalancer.DeferringLoadBalancerInterceptor] is not eligible for getting processed by all BeanPostProcessors (for example: not eligible for auto-proxying). Is this bean getting eagerly injected into a currently created BeanPostProcessor [lbRestClientPostProcessor]? Check the corresponding BeanPostProcessor declaration and its dependencies.
+2026-08-27 09:52:50.662 INFO  [discovery-service] [main] o.s.b.w.e.tomcat.TomcatWebServer : Tomcat initialized with port 8761 (http)
+2026-08-27 09:52:50.670 INFO  [discovery-service] [main] o.a.catalina.core.StandardService : Starting service [Tomcat]
+2026-08-27 09:52:50.670 INFO  [discovery-service] [main] o.a.catalina.core.StandardEngine : Starting Servlet engine: [Apache Tomcat/10.1.24]
+2026-08-27 09:52:50.762 INFO  [discovery-service] [main] o.a.c.c.C.[Tomcat].[localhost].[/] : Initializing Spring embedded WebApplicationContext
+2026-08-27 09:52:50.762 INFO  [discovery-service] [main] o.s.b.w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 1310 ms
+2026-08-27 09:52:52.336 WARN  [discovery-service] [main] o.s.c.l.c.LoadBalancerCacheAutoConfiguration$LoadBalancerCaffeineWarnLogger : Spring Cloud LoadBalancer is currently working with the default cache. While this cache implementation is useful for development and tests, it's recommended to use Caffeine cache in production.You can switch to using Caffeine cache, by adding it and org.springframework.cache.caffeine.CaffeineCacheManager to the classpath.
+2026-08-27 09:52:52.349 INFO  [discovery-service] [main] o.s.c.n.eureka.InstanceInfoFactory : Setting initial instance status as: STARTING
+2026-08-27 09:52:52.419 WARN  [discovery-service] [main] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
+2026-08-27 09:52:52.529 INFO  [discovery-service] [main] o.s.b.a.e.web.EndpointLinksResolver : Exposing 5 endpoints beneath base path '/actuator'
+2026-08-27 09:52:52.588 INFO  [discovery-service] [main] o.s.c.n.e.s.EurekaServiceRegistry : Registering application DISCOVERY-SERVICE with eureka with status UP
+2026-08-27 09:52:52.604 INFO  [discovery-service] [Thread-9] o.s.c.n.e.s.EurekaServerBootstrap : isAws returned false
+2026-08-27 09:52:52.606 INFO  [discovery-service] [main] o.s.b.w.e.tomcat.TomcatWebServer : Tomcat started on port 8761 (http) with context path '/'
+2026-08-27 09:52:52.608 INFO  [discovery-service] [main] o.s.c.n.e.s.EurekaAutoServiceRegistration : Updating port to 8761
+2026-08-27 09:52:52.609 INFO  [discovery-service] [Thread-9] o.s.c.n.e.s.EurekaServerBootstrap : Initialized server context
+2026-08-27 09:52:52.618 INFO  [discovery-service] [Thread-9] o.s.c.n.e.s.EurekaServerInitializerConfiguration : Started Eureka Server
+2026-08-27 09:52:52.626 INFO  [discovery-service] [main] c.c.d.EurekaServerApplication : Started EurekaServerApplication in 3.56 seconds (process running for 3.87)
+2026-08-27 09:52:52.633 INFO  [discovery-service] [main] c.c.d.EurekaServerApplication : =======================================================
+2026-08-27 09:52:52.634 INFO  [discovery-service] [main] c.c.d.EurekaServerApplication :   Eureka Discovery Server started successfully
+2026-08-27 09:52:52.635 INFO  [discovery-service] [main] c.c.d.EurekaServerApplication :   Dashboard → http://localhost:8761
+2026-08-27 09:52:52.635 INFO  [discovery-service] [main] c.c.d.EurekaServerApplication :   Health   → http://localhost:8761/actuator/health
+2026-08-27 09:52:52.636 INFO  [discovery-service] [main] c.c.d.EurekaServerApplication : =======================================================
+2026-08-27 09:56:05.924 INFO  [discovery-service] [http-nio-8761-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/] : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-08-27 09:56:05.924 INFO  [discovery-service] [http-nio-8761-exec-1] o.s.web.servlet.DispatcherServlet : Initializing Servlet 'dispatcherServlet'
+2026-08-27 09:56:05.925 INFO  [discovery-service] [http-nio-8761-exec-1] o.s.web.servlet.DispatcherServlet : Completed initialization in 1 ms
+2026-08-27 10:00:02.615 WARN  [discovery-service] [Eureka-EvictionTimer] c.n.e.r.AbstractInstanceRegistry : DS: Registry: expired lease for CHAT-SERVICE/chat-service:8084
+2026-08-27 10:02:52.420 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
+2026-08-27 10:12:52.421 WARN  [discovery-service] [Eureka-PeerNodesUpdater] c.n.eureka.cluster.PeerEurekaNodes : The replica size seems to be empty. Check the route 53 DNS Registry
+2026-08-27 10:17:12.018 INFO  [discovery-service] [SpringApplicationShutdownHook] o.s.c.n.e.s.EurekaServiceRegistry : Unregistering application DISCOVERY-SERVICE with eureka with status DOWN
+2026-08-27 10:17:12.098 INFO  [discovery-service] [SpringApplicationShutdownHook] o.s.c.n.e.s.EurekaServerBootstrap : Shutting down Eureka Server..
+2026-08-27 10:17:12.133 INFO  [discovery-service] [SpringApplicationShutdownHook] o.s.c.n.e.s.EurekaServerBootstrap : Eureka Service is now shutdown...

@@ -26,7 +26,7 @@ RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
 WORKDIR /app
 
-COPY --from=builder /build/target/eureka-server-*.jar app.jar
+COPY --from=builder /build/target/discovery-service-*.jar app.jar
 
 RUN mkdir -p logs && chown -R appuser:appgroup /app
 

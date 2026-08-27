@@ -24,9 +24,6 @@ public class GatewayConfig {
     @Value("${chat.service.url}")
     private String chatServiceUrl;
 
-    @Value("${notification.service.url}")
-    private String notificationServiceUrl;
-
     // Must match gateway.secret in every downstream service's application.properties
     @Value("${gateway.secret:chatapp-gateway-secret}")
     private String gatewaySecret;
@@ -116,24 +113,6 @@ public class GatewayConfig {
                 .addRequestHeader("X-Gateway-Source", gatewaySecret)
         )
         .uri(chatServiceUrl))
-
-                // ── NOTIFICATION SERVICE (protected — JWT required) ────────────
-                .route("notification-service", r -> r
-                        .path("/api/v1/notifications/**")
-                        .filters(f -> f
-                                .filter(jwtAuthFilter.apply(
-                                        new JwtAuthenticationFilter.Config()
-                                ))
-                                .requestRateLimiter(config -> config
-                                        .setRateLimiter(redisRateLimiter())
-                                        .setKeyResolver(userKeyResolver()))
-                                .rewritePath(
-                                        "/api/v1/notifications/(?<segment>.*)",
-                                        "/${segment}"
-                                )
-                                .addRequestHeader("X-Gateway-Source", gatewaySecret)
-                        )
-                        .uri(notificationServiceUrl))
 
                 .build();
     }
